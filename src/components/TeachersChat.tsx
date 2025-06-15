@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 import VoiceRecorderButton from "./VoiceRecorderButton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
+// Import the Supabase types for strict typing
+import type { Tables } from "@/integrations/supabase/types";
 
 type Profile = {
   name: string;
@@ -19,10 +21,10 @@ type Profile = {
 
 type Message = {
   id: string;
-  text?: string;
-  audio_url?: string;
+  text?: string | null;
+  audio_url?: string | null;
   sender_phone: string;
-  timestamp: string; // as ISO string for easy display/conversion
+  timestamp: string; // ISO string for display/conversion
 };
 
 // Util to get the current user (last profile in localStorage)
@@ -49,13 +51,10 @@ function getInitials(name: string) {
     .slice(0, 2);
 }
 
-// No welcome/system messages: only user content from here on!
 const TeachersChat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const msgEndRef = useRef<HTMLDivElement | null>(null);
-
-  // Keep profile info in chat
   const [profiles, setProfiles] = useState<Profile[]>(() => getStoredProfiles());
   const currentUser = getCurrentUser();
 
@@ -63,6 +62,7 @@ const TeachersChat: React.FC = () => {
   useEffect(() => {
     let isMounted = true;
     async function fetchMessages() {
+      // Correctly type the Supabase query using generated types
       const { data, error } = await supabase
         .from("messages")
         .select("*")
@@ -73,32 +73,48 @@ const TeachersChat: React.FC = () => {
         console.error("Failed to load messages:", error);
         return;
       }
-      // Map data to Message[]
       setMessages(
-        (data ?? []).map((m: any) => ({
+        ((data as Tables<"messages">[] | null) ?? []).map((m) => ({
           ...m,
-          timestamp: typeof m.timestamp === "string" ? m.timestamp : new Date(m.timestamp).toISOString(),
+          timestamp:
+            typeof m.timestamp === "string"
+              ? m.timestamp
+              : new Date(m.timestamp).toISOString(),
+          text: m.text,
+          audio_url: m.audio_url,
         }))
       );
     }
     fetchMessages();
 
-    return () => { isMounted = false };
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Listen to realtime changes (INSERT ONLY - new messages)
   useEffect(() => {
     const channel = supabase
-      .channel('public:messages')
+      .channel("public:messages")
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
         (payload) => {
-          const m = payload.new;
-          setMessages(prev => {
-            // Don't add duplicates on self-send
-            if (!prev.some(msg => msg.id === m.id)) {
-              return [...prev, { ...m, timestamp: typeof m.timestamp === "string" ? m.timestamp : new Date(m.timestamp).toISOString() }];
+          const m = payload.new as Tables<"messages">;
+          setMessages((prev) => {
+            if (!prev.some((msg) => msg.id === m.id)) {
+              return [
+                ...prev,
+                {
+                  ...m,
+                  timestamp:
+                    typeof m.timestamp === "string"
+                      ? m.timestamp
+                      : new Date(m.timestamp).toISOString(),
+                  text: m.text,
+                  audio_url: m.audio_url,
+                },
+              ];
             }
             return prev;
           });
@@ -126,13 +142,14 @@ const TeachersChat: React.FC = () => {
   }, [messages]);
 
   async function addMessageToSupabase(content: Partial<Message>) {
+    // Use generated typings as much as possible
+    // Omit partial fields not in schema
     const { data, error } = await supabase
       .from("messages")
-      .insert([{ ...content }]);
+      .insert([content as Tables<"messages">]);
     if (error) {
       console.error("Failed to send message:", error);
     }
-    // No need to manually update - realtime will trigger.
   }
 
   // Submit text message
@@ -143,7 +160,7 @@ const TeachersChat: React.FC = () => {
     await addMessageToSupabase({
       text,
       sender_phone: currentUser.phone,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
     setInput("");
   };
@@ -151,16 +168,13 @@ const TeachersChat: React.FC = () => {
   // Handle audio
   const handleSendAudio = async (audioBlob: Blob) => {
     if (!currentUser) return;
-    // Upload the audio to Supabase Storage? For demo, store as base64 blob (not for prod!)
-    // Use URL.createObjectURL for local, but for cross-device persistence, store data.
-    // We'll store a base64-encoded audio blob in the DB (not scalable, but works as a demo)
     const reader = new FileReader();
     reader.onloadend = async () => {
       const base64 = reader.result;
       await addMessageToSupabase({
         audio_url: typeof base64 === "string" ? base64 : undefined,
         sender_phone: currentUser.phone,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     };
     reader.readAsDataURL(audioBlob);
@@ -176,7 +190,9 @@ const TeachersChat: React.FC = () => {
       <div className="flex items-center gap-2 px-4 py-3 border-b bg-slate-50">
         <Users className="text-blue-800" />
         <span className="font-semibold text-blue-900">Class Group Chat</span>
-        <span className="ml-auto text-xs text-slate-400">For Teachers & Students</span>
+        <span className="ml-auto text-xs text-slate-400">
+          For Teachers & Students
+        </span>
       </div>
       <div className="flex-1 overflow-y-auto px-3 py-2 bg-gradient-to-b from-blue-50 via-white to-blue-50">
         {messages.length === 0 ? (
@@ -186,22 +202,26 @@ const TeachersChat: React.FC = () => {
         ) : (
           messages.map((msg) => {
             const senderProfile = getProfile(msg.sender_phone);
-            const isMe = currentUser && senderProfile && senderProfile.phone === currentUser.phone;
-            if (!senderProfile) return null; // Hide messages if no profile (extra safety, shouldn't happen)
+            const isMe =
+              currentUser &&
+              senderProfile &&
+              senderProfile.phone === currentUser.phone;
+            if (!senderProfile) return null;
             return (
               <div
                 key={msg.id}
                 className={cn(
                   "mb-2 flex w-full",
-                  // always align avatar left, bubble placement adjusts if user
                   isMe ? "justify-end" : "justify-start"
                 )}
               >
-                {/* Avatar + name column */}
                 <div className="flex flex-col items-center mr-2 min-w-[48px]">
                   <Avatar className="w-7 h-7 shrink-0 mb-1">
                     {senderProfile.image ? (
-                      <AvatarImage src={senderProfile.image} alt={senderProfile.name} />
+                      <AvatarImage
+                        src={senderProfile.image}
+                        alt={senderProfile.name}
+                      />
                     ) : (
                       <AvatarFallback>
                         {getInitials(senderProfile?.name || "U")}
@@ -212,7 +232,6 @@ const TeachersChat: React.FC = () => {
                     {senderProfile.name}
                   </span>
                 </div>
-                {/* Message bubble */}
                 <div
                   className={cn(
                     "rounded-lg px-3 py-2 max-w-[75%] text-base flex flex-col shadow-sm",
@@ -222,17 +241,23 @@ const TeachersChat: React.FC = () => {
                   )}
                 >
                   {msg.audio_url ? (
-                    // If audio_url is "data:..." just treat as src; for prod, should use bucket url
-                    <audio controls src={msg.audio_url} className="w-full mb-1 rounded" preload="auto">
+                    <audio
+                      controls
+                      src={msg.audio_url}
+                      className="w-full mb-1 rounded"
+                      preload="auto"
+                    >
                       Your browser does not support the audio element.
                     </audio>
                   ) : (
                     <span className="block">{msg.text}</span>
                   )}
-                  <span className={cn(
-                    "block text-xs opacity-60 mt-0.5 text-right",
-                    isMe ? "text-white/70" : "text-gray-500"
-                  )}>
+                  <span
+                    className={cn(
+                      "block text-xs opacity-60 mt-0.5 text-right",
+                      isMe ? "text-white/70" : "text-gray-500"
+                    )}
+                  >
                     {new Date(msg.timestamp).toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
@@ -252,11 +277,11 @@ const TeachersChat: React.FC = () => {
         <Input
           placeholder="Type a message..."
           value={input}
-          onChange={e => setInput(e.target.value)}
+          onChange={(e) => setInput(e.target.value)}
           maxLength={180}
           autoComplete="off"
           className="text-base"
-          onKeyDown={e => {
+          onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) handleSend(e);
           }}
           aria-label="Chat message text"
@@ -277,4 +302,3 @@ const TeachersChat: React.FC = () => {
 };
 
 export default TeachersChat;
-
