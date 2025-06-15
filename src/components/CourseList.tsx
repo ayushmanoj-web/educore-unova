@@ -10,8 +10,8 @@ const CourseList = () => (
     <div className="mb-6 flex justify-end">
       <Button
         variant="secondary"
-        className="text-blue-700 border-blue-200 bg-blue-50 hover:bg-blue-100"
-        // Placeholder click; you can later link this to a route or modal
+        size="lg"
+        className="h-14 px-8 py-0 rounded-xl shadow font-semibold text-blue-700 border border-blue-200 bg-blue-50 hover:bg-blue-100 transition-all text-lg"
         onClick={() => { /* add navigation or modal code here */ }}
       >
         Textbooks
@@ -29,4 +29,3 @@ const CourseList = () => (
 );
 
 export default CourseList;
-
