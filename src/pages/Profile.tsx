@@ -1,8 +1,10 @@
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 type Profile = {
   name: string;
@@ -10,6 +12,7 @@ type Profile = {
   division: string;
   dob: string;
   phone: string;
+  image?: string; // base64 string or undefined
 };
 
 const LOCAL_STORAGE_KEY = "student-profiles";
@@ -40,19 +43,24 @@ const Profile = () => {
     division: "",
     dob: "",
     phone: "",
+    image: undefined,
   });
 
   const [nameAvailable, setNameAvailable] = useState<null | boolean>(null);
+  const [imagePreview, setImagePreview] = useState<string | undefined>();
+  const [imageFileName, setImageFileName] = useState<string | undefined>();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // If profile already exists for this device, load the latest one (by phone number)
     const profiles = getStoredProfiles();
     if (profiles.length > 0) {
-      setForm(profiles[profiles.length - 1]);
+      const last = profiles[profiles.length - 1];
+      setForm(last);
+      setImagePreview(last.image || undefined);
     }
   }, []);
 
-  // Check name availability whenever name changes
   useEffect(() => {
     if (!form.name.trim()) {
       setNameAvailable(null);
@@ -71,11 +79,45 @@ const Profile = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  // Handle image upload and preview as base64
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Only JPEG and PNG images
+    if (!/^image\/(jpeg|png)$/.test(file.type)) {
+      alert("Only JPEG and PNG images are allowed.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+      setForm(prev => ({ ...prev, image: reader.result as string }));
+      setImageFileName(file.name);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleImageRemove = () => {
+    setImagePreview(undefined);
+    setImageFileName(undefined);
+    setForm(prev => ({ ...prev, image: undefined }));
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     saveProfile(form);
     alert("Profile saved (on this device only). Teachers can now see your profile!");
   };
+
+  // Initials generator
+  function getInitials(name: string) {
+    return name
+      .split(" ")
+      .map((n) => n[0]?.toUpperCase())
+      .join("")
+      .slice(0, 2);
+  }
 
   return (
     <div className="flex flex-col items-center justify-center h-full pt-12 animate-fade-in">
@@ -85,6 +127,48 @@ const Profile = () => {
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={handleSubmit} autoComplete="off">
+            <div className="flex flex-col items-center px-2 mb-2">
+              <Avatar className="w-20 h-20 mb-2">
+                {imagePreview ? (
+                  <AvatarImage src={imagePreview} alt={form.name || "Profile"} />
+                ) : (
+                  <AvatarFallback>{getInitials(form.name || "User")}</AvatarFallback>
+                )}
+              </Avatar>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png, image/jpeg"
+                className="hidden"
+                id="profile-image-upload"
+                onChange={handleImageChange}
+              />
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-xs"
+                >
+                  {imagePreview ? "Change Photo" : "Upload Photo"}
+                </Button>
+                {imagePreview && (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    className="text-xs"
+                    onClick={handleImageRemove}
+                  >
+                    Remove
+                  </Button>
+                )}
+              </div>
+              {imageFileName && (
+                <span className="text-xs mt-1 text-gray-500">{imageFileName}</span>
+              )}
+            </div>
             <div>
               <Label htmlFor="name">Name</Label>
               <Input

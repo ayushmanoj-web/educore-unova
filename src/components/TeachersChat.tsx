@@ -1,106 +1,147 @@
-
 import React, { useRef, useState, useEffect } from "react";
-import { Send, User, Users } from "lucide-react";
+import { Send, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import VoiceRecorderButton from "./VoiceRecorderButton";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+
+type Profile = {
+  name: string;
+  class: string;
+  division: string;
+  dob: string;
+  phone: string;
+  image?: string;
+};
 
 type Message = {
   id: number;
   text?: string;
   audioUrl?: string;
-  sender: "me" | "other";
-  senderName: string;
+  senderPhone: string; // sender's phone for matching avatar/info
   timestamp: Date;
 };
 
-const sampleUsers = [
-  { sender: "other" as const, senderName: "Ms. Smith" },
-  { sender: "other" as const, senderName: "Alex" },
-  { sender: "other" as const, senderName: "Taylor" },
+const LOCAL_STORAGE_KEY = "student-profiles";
+
+// Util to get the current user (last profile in localStorage)
+function getCurrentUser(): Profile | undefined {
+  const profiles = getStoredProfiles();
+  if (profiles.length === 0) return undefined;
+  return profiles[profiles.length - 1];
+}
+
+function getStoredProfiles(): Profile[] {
+  try {
+    const data = localStorage.getItem(LOCAL_STORAGE_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+}
+
+// Util to get initials from name
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .map((n) => n[0]?.toUpperCase())
+    .join("")
+    .slice(0, 2);
+}
+
+const WELCOME_MSGS: Omit<Message, "id">[] = [
+  {
+    text: "Welcome to the Class Group Chat! 👋",
+    senderPhone: "system",
+    timestamp: new Date(),
+  },
+  {
+    text: "Feel free to ask questions and share your updates here.",
+    senderPhone: "system",
+    timestamp: new Date(),
+  },
 ];
 
-const myName = "You"; // could be dynamic per user in real app
-
 const TeachersChat: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      text: "Welcome to the Class Group Chat! 👋",
-      sender: "other",
-      senderName: "Ms. Smith",
-      timestamp: new Date(),
-    },
-    {
-      id: 2,
-      text: "Feel free to ask questions and share your updates here.",
-      sender: "other",
-      senderName: "Ms. Smith",
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    // Only show welcome messages if no user messages exist yet
+    return WELCOME_MSGS.map((m, idx) => ({
+      ...m,
+      id: idx + 1,
+    }));
+  });
   const [input, setInput] = useState("");
   const msgEndRef = useRef<HTMLDivElement | null>(null);
 
-  // (Fake) Simulate random messages from others for demo
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (messages.length < 10 && Math.random() > 0.6) {
-        const randUser = sampleUsers[Math.floor(Math.random() * sampleUsers.length)];
-        setMessages((msgs) => [
-          ...msgs,
-          {
-            id: messages.length + 1,
-            text: 
-              randUser.senderName === "Alex"
-                ? "When is the next test?"
-                : randUser.senderName === "Taylor"
-                  ? "Here's my volcano model photo 📷"
-                  : "Remember: bring your science project Monday!",
-            sender: randUser.sender,
-            senderName: randUser.senderName,
-            timestamp: new Date(),
-          },
-        ]);
-      }
-    }, 5000 + Math.random() * 5000);
+  // Keep profile info in chat
+  const [profiles, setProfiles] = useState<Profile[]>(() => getStoredProfiles());
+  const currentUser = getCurrentUser();
 
-    return () => clearTimeout(timeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages]);
+  useEffect(() => {
+    // Reload latest profiles if changed outside
+    const handle = () => setProfiles(getStoredProfiles());
+    window.addEventListener("storage", handle);
+    return () => window.removeEventListener("storage", handle);
+  }, []);
 
   useEffect(() => {
     msgEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // When a new profile is added, reload chat user info
+  useEffect(() => {
+    setProfiles(getStoredProfiles());
+  }, []);
+
+  // Submit text message
   const handleSend = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const text = input.trim();
-    if (!text) return;
-    const newMsg: Message = {
-      id: messages.length + 1,
-      text,
-      sender: "me",
-      senderName: myName,
-      timestamp: new Date(),
-    };
-    setMessages((msgs) => [...msgs, newMsg]);
+    if (!text || !currentUser) return;
+    setMessages((msgs) => [
+      ...msgs,
+      {
+        id: msgs.length + 1,
+        text,
+        senderPhone: currentUser.phone,
+        timestamp: new Date(),
+      }
+    ]);
     setInput("");
   };
 
+  // Handle audio
   const handleSendAudio = (audioBlob: Blob) => {
+    if (!currentUser) return;
     const audioUrl = URL.createObjectURL(audioBlob);
-    const newMsg: Message = {
-      id: messages.length + 1,
-      audioUrl,
-      sender: "me",
-      senderName: myName,
-      timestamp: new Date(),
-    };
-    setMessages((msgs) => [...msgs, newMsg]);
-    // You can revokeObjectURL after component unmounts if needed.
+    setMessages((msgs) => [
+      ...msgs,
+      {
+        id: msgs.length + 1,
+        audioUrl,
+        senderPhone: currentUser.phone,
+        timestamp: new Date(),
+      }
+    ]);
   };
+
+  // Get profile info for message sender
+  function getProfile(phone: string): Profile | undefined {
+    if (phone === "system") {
+      return {
+        name: "Ms. Smith",
+        class: "",
+        division: "",
+        dob: "",
+        phone: "system",
+        image: undefined,
+      };
+    }
+    return profiles.find((p) => p.phone === phone);
+  }
+
+  // You can also make "group chat" feel by listing everyone whos ever chatted here. (future idea)
 
   return (
     <div className="flex flex-col rounded-xl border bg-white shadow animate-fade-in max-h-[420px] min-h-[340px] overflow-hidden">
@@ -110,39 +151,52 @@ const TeachersChat: React.FC = () => {
         <span className="ml-auto text-xs text-slate-400">For Teachers & Students</span>
       </div>
       <div className="flex-1 overflow-y-auto px-3 py-2 bg-gradient-to-b from-blue-50 via-white to-blue-50">
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={cn(
-              "mb-1 flex",
-              msg.sender === "me" ? "justify-end" : "justify-start"
-            )}
-          >
+        {messages.map((msg) => {
+          const senderProfile = getProfile(msg.senderPhone);
+          const isMe = currentUser && senderProfile && senderProfile.phone === currentUser.phone;
+          return (
             <div
+              key={msg.id}
               className={cn(
-                "rounded-lg px-3 py-2 max-w-[75%] text-base",
-                msg.sender === "me"
-                  ? "bg-blue-600 text-white rounded-br-md"
-                  : "bg-slate-100 text-slate-800 rounded-bl-md"
+                "mb-1 flex items-end gap-2",
+                isMe ? "justify-end flex-row-reverse" : "justify-start"
               )}
             >
-              {msg.audioUrl ? (
-                <audio controls src={msg.audioUrl} className="w-full mb-1 rounded" preload="auto">
-                  Your browser does not support the audio element.
-                </audio>
-              ) : (
-                <span className="block">{msg.text}</span>
-              )}
-              <span className="block text-xs opacity-60 mt-0.5">
-                {msg.senderName} •{" "}
-                {msg.timestamp.toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </span>
+              <Avatar className="w-7 h-7 shrink-0">
+                {senderProfile?.image ? (
+                  <AvatarImage src={senderProfile.image} alt={senderProfile.name} />
+                ) : (
+                  <AvatarFallback>
+                    {getInitials(senderProfile?.name || "U")}
+                  </AvatarFallback>
+                )}
+              </Avatar>
+              <div
+                className={cn(
+                  "rounded-lg px-3 py-2 max-w-[75%] text-base",
+                  isMe
+                    ? "bg-blue-600 text-white rounded-br-md"
+                    : "bg-slate-100 text-slate-800 rounded-bl-md"
+                )}
+              >
+                {msg.audioUrl ? (
+                  <audio controls src={msg.audioUrl} className="w-full mb-1 rounded" preload="auto">
+                    Your browser does not support the audio element.
+                  </audio>
+                ) : (
+                  <span className="block">{msg.text}</span>
+                )}
+                <span className="block text-xs opacity-60 mt-0.5">
+                  {(senderProfile?.name || "Unknown") + " • "}
+                  {msg.timestamp.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         <div ref={msgEndRef} />
       </div>
       <form
@@ -161,13 +215,13 @@ const TeachersChat: React.FC = () => {
           }}
           aria-label="Chat message text"
         />
-        <VoiceRecorderButton onSend={handleSendAudio} disabled={false} />
+        <VoiceRecorderButton onSend={handleSendAudio} disabled={!currentUser} />
         <Button
           type="submit"
           size="icon"
           className="bg-blue-700 text-white hover:bg-blue-800"
           aria-label="Send"
-          disabled={!input.trim()}
+          disabled={!input.trim() || !currentUser}
         >
           <Send size={20} />
         </Button>
