@@ -21,7 +21,7 @@ const sampleCourses = [
 
 const CourseList = () => (
   <section id="courses">
-    <h2 className="text-2xl font-bold text-blue-900 mb-4">Your Courses</h2>
+    <h2 className="text-2xl font-bold text-blue-900 mb-4">Study Essentials</h2>
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
       {sampleCourses.map((course, i) => (
         <CourseCard key={i} {...course} />
