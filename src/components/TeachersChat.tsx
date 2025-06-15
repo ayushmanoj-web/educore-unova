@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect } from "react";
 import { Send, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -5,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import VoiceRecorderButton from "./VoiceRecorderButton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { supabase } from "@/integrations/supabase/client";
 
 type Profile = {
   name: string;
@@ -16,29 +18,26 @@ type Profile = {
 };
 
 type Message = {
-  id: number;
+  id: string;
   text?: string;
-  audioUrl?: string;
-  senderPhone: string; // sender's phone for matching avatar/info
-  timestamp: Date;
+  audio_url?: string;
+  sender_phone: string;
+  timestamp: string; // as ISO string for easy display/conversion
 };
 
-const LOCAL_STORAGE_KEY = "student-profiles";
-
 // Util to get the current user (last profile in localStorage)
-function getCurrentUser(): Profile | undefined {
-  const profiles = getStoredProfiles();
-  if (profiles.length === 0) return undefined;
-  return profiles[profiles.length - 1];
-}
-
 function getStoredProfiles(): Profile[] {
   try {
-    const data = localStorage.getItem(LOCAL_STORAGE_KEY);
+    const data = localStorage.getItem("student-profiles");
     return data ? JSON.parse(data) : [];
   } catch {
     return [];
   }
+}
+function getCurrentUser(): Profile | undefined {
+  const profiles = getStoredProfiles();
+  if (profiles.length === 0) return undefined;
+  return profiles[profiles.length - 1];
 }
 
 // Util to get initials from name
@@ -60,52 +59,111 @@ const TeachersChat: React.FC = () => {
   const [profiles, setProfiles] = useState<Profile[]>(() => getStoredProfiles());
   const currentUser = getCurrentUser();
 
+  // Fetch messages from Supabase on mount
   useEffect(() => {
-    // Reload latest profiles if changed outside
+    let isMounted = true;
+    async function fetchMessages() {
+      const { data, error } = await supabase
+        .from("messages")
+        .select("*")
+        .order("timestamp", { ascending: true });
+
+      if (!isMounted) return;
+      if (error) {
+        console.error("Failed to load messages:", error);
+        return;
+      }
+      // Map data to Message[]
+      setMessages(
+        (data ?? []).map((m: any) => ({
+          ...m,
+          timestamp: typeof m.timestamp === "string" ? m.timestamp : new Date(m.timestamp).toISOString(),
+        }))
+      );
+    }
+    fetchMessages();
+
+    return () => { isMounted = false };
+  }, []);
+
+  // Listen to realtime changes (INSERT ONLY - new messages)
+  useEffect(() => {
+    const channel = supabase
+      .channel('public:messages')
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages" },
+        (payload) => {
+          const m = payload.new;
+          setMessages(prev => {
+            // Don't add duplicates on self-send
+            if (!prev.some(msg => msg.id === m.id)) {
+              return [...prev, { ...m, timestamp: typeof m.timestamp === "string" ? m.timestamp : new Date(m.timestamp).toISOString() }];
+            }
+            return prev;
+          });
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Reload latest profiles if changed outside
+  useEffect(() => {
     const handle = () => setProfiles(getStoredProfiles());
     window.addEventListener("storage", handle);
     return () => window.removeEventListener("storage", handle);
+  }, []);
+  // When a new profile is added, reload chat user info
+  useEffect(() => {
+    setProfiles(getStoredProfiles());
   }, []);
 
   useEffect(() => {
     msgEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // When a new profile is added, reload chat user info
-  useEffect(() => {
-    setProfiles(getStoredProfiles());
-  }, []);
+  async function addMessageToSupabase(content: Partial<Message>) {
+    const { data, error } = await supabase
+      .from("messages")
+      .insert([{ ...content }]);
+    if (error) {
+      console.error("Failed to send message:", error);
+    }
+    // No need to manually update - realtime will trigger.
+  }
 
   // Submit text message
-  const handleSend = (e?: React.FormEvent) => {
+  const handleSend = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const text = input.trim();
     if (!text || !currentUser) return;
-    setMessages((msgs) => [
-      ...msgs,
-      {
-        id: msgs.length + 1,
-        text,
-        senderPhone: currentUser.phone,
-        timestamp: new Date(),
-      }
-    ]);
+    await addMessageToSupabase({
+      text,
+      sender_phone: currentUser.phone,
+      timestamp: new Date().toISOString()
+    });
     setInput("");
   };
 
   // Handle audio
-  const handleSendAudio = (audioBlob: Blob) => {
+  const handleSendAudio = async (audioBlob: Blob) => {
     if (!currentUser) return;
-    const audioUrl = URL.createObjectURL(audioBlob);
-    setMessages((msgs) => [
-      ...msgs,
-      {
-        id: msgs.length + 1,
-        audioUrl,
-        senderPhone: currentUser.phone,
-        timestamp: new Date(),
-      }
-    ]);
+    // Upload the audio to Supabase Storage? For demo, store as base64 blob (not for prod!)
+    // Use URL.createObjectURL for local, but for cross-device persistence, store data.
+    // We'll store a base64-encoded audio blob in the DB (not scalable, but works as a demo)
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64 = reader.result;
+      await addMessageToSupabase({
+        audio_url: typeof base64 === "string" ? base64 : undefined,
+        sender_phone: currentUser.phone,
+        timestamp: new Date().toISOString()
+      });
+    };
+    reader.readAsDataURL(audioBlob);
   };
 
   // Get profile info for message sender
@@ -127,7 +185,7 @@ const TeachersChat: React.FC = () => {
           </div>
         ) : (
           messages.map((msg) => {
-            const senderProfile = getProfile(msg.senderPhone);
+            const senderProfile = getProfile(msg.sender_phone);
             const isMe = currentUser && senderProfile && senderProfile.phone === currentUser.phone;
             if (!senderProfile) return null; // Hide messages if no profile (extra safety, shouldn't happen)
             return (
@@ -163,8 +221,9 @@ const TeachersChat: React.FC = () => {
                       : "bg-slate-100 text-slate-800 rounded-bl-md"
                   )}
                 >
-                  {msg.audioUrl ? (
-                    <audio controls src={msg.audioUrl} className="w-full mb-1 rounded" preload="auto">
+                  {msg.audio_url ? (
+                    // If audio_url is "data:..." just treat as src; for prod, should use bucket url
+                    <audio controls src={msg.audio_url} className="w-full mb-1 rounded" preload="auto">
                       Your browser does not support the audio element.
                     </audio>
                   ) : (
@@ -174,7 +233,7 @@ const TeachersChat: React.FC = () => {
                     "block text-xs opacity-60 mt-0.5 text-right",
                     isMe ? "text-white/70" : "text-gray-500"
                   )}>
-                    {msg.timestamp.toLocaleTimeString([], {
+                    {new Date(msg.timestamp).toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
@@ -218,3 +277,4 @@ const TeachersChat: React.FC = () => {
 };
 
 export default TeachersChat;
+
