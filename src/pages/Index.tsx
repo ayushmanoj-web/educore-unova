@@ -1,18 +1,19 @@
 
-import DashboardHero from "../components/DashboardHero";
-import CourseList from "../components/CourseList";
-
 const Index = () => {
   return (
     <div className="min-h-screen w-full bg-gradient-to-tr from-slate-50 via-white to-blue-50 flex flex-col items-center">
       <div className="w-full max-w-3xl mt-8 px-4">
-        <DashboardHero />
-        <CourseList />
-        <section className="mt-8 py-8 w-full flex flex-col items-center bg-white bg-opacity-60 rounded-lg shadow">
-          <h3 className="text-xl font-semibold mb-2 text-blue-800">Ready to start learning?</h3>
-          <p className="text-slate-700 mb-4 text-center max-w-lg">
-            Access a variety of resources and connect with a community of learners and teachers. Visit <a href="/downloads" className="text-blue-600 underline font-medium">Downloads</a> to get started or check the <a href="/notifications" className="text-blue-600 underline font-medium">Notifications</a> page for updates.
+        <section className="bg-blue-600 rounded-lg shadow p-8 flex flex-col items-center justify-center text-white mb-8">
+          <h1 className="text-2xl md:text-4xl font-bold mb-2 text-center">Welcome to Educore</h1>
+          <p className="text-lg md:text-xl mb-4 text-center max-w-xl">
+            Your trusted platform for accessible, high-quality education. Discover courses, download resources, and connect with peers and educators.
           </p>
+          <a
+            href="/downloads"
+            className="inline-block bg-white text-blue-700 font-semibold px-6 py-2 rounded shadow hover:bg-blue-50 transition"
+          >
+            Explore Downloads
+          </a>
         </section>
       </div>
     </div>
@@ -20,3 +21,4 @@ const Index = () => {
 };
 
 export default Index;
+
