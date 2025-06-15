@@ -7,15 +7,24 @@ const sampleCourses: never[] = [];
 const CourseList = () => (
   <section id="courses">
     <h2 className="text-2xl font-bold text-blue-900 mb-4">Study Essentials</h2>
-    <div className="mb-6 flex justify-end">
-      <Button
-        variant="secondary"
-        size="lg"
-        className="h-14 px-8 py-0 rounded-xl shadow font-semibold text-blue-700 border border-blue-200 bg-blue-50 hover:bg-blue-100 transition-all text-lg"
-        onClick={() => { /* add navigation or modal code here */ }}
-      >
-        Textbooks
-      </Button>
+    {/* Textbooks Card */}
+    <div className="mb-8 flex justify-end">
+      <div className="w-full md:w-[380px] bg-white border rounded-xl p-6 shadow flex flex-col justify-between">
+        <div className="flex-1 flex flex-col justify-center">
+          <h3 className="font-semibold text-blue-700 text-lg mb-2">
+            Textbooks
+          </h3>
+          <p className="text-slate-700 mb-6 text-sm">
+            View all your textbooks
+          </p>
+        </div>
+        <Button
+          className="mt-auto w-full bg-blue-600 text-white text-base font-semibold py-3 rounded-lg hover:bg-blue-700 transition"
+          size="lg"
+        >
+          Textbooks
+        </Button>
+      </div>
     </div>
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
       {/* No courses to display */}
