@@ -52,7 +52,7 @@ function getInitials(name: string) {
 
 // No welcome/system messages: only user content from here on!
 const TeachersChat: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>([]); // Start with an empty message list
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const msgEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -134,24 +134,32 @@ const TeachersChat: React.FC = () => {
               <div
                 key={msg.id}
                 className={cn(
-                  "mb-1 flex items-end gap-2",
-                  isMe ? "justify-end flex-row-reverse" : "justify-start"
+                  "mb-2 flex w-full",
+                  // always align avatar left, bubble placement adjusts if user
+                  isMe ? "justify-end" : "justify-start"
                 )}
               >
-                <Avatar className="w-7 h-7 shrink-0">
-                  {senderProfile.image ? (
-                    <AvatarImage src={senderProfile.image} alt={senderProfile.name} />
-                  ) : (
-                    <AvatarFallback>
-                      {getInitials(senderProfile?.name || "U")}
-                    </AvatarFallback>
-                  )}
-                </Avatar>
+                {/* Avatar + name column */}
+                <div className="flex flex-col items-center mr-2 min-w-[48px]">
+                  <Avatar className="w-7 h-7 shrink-0 mb-1">
+                    {senderProfile.image ? (
+                      <AvatarImage src={senderProfile.image} alt={senderProfile.name} />
+                    ) : (
+                      <AvatarFallback>
+                        {getInitials(senderProfile?.name || "U")}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <span className="block text-xs text-center text-gray-700 max-w-[48px] truncate">
+                    {senderProfile.name}
+                  </span>
+                </div>
+                {/* Message bubble */}
                 <div
                   className={cn(
-                    "rounded-lg px-3 py-2 max-w-[75%] text-base",
+                    "rounded-lg px-3 py-2 max-w-[75%] text-base flex flex-col shadow-sm",
                     isMe
-                      ? "bg-blue-600 text-white rounded-br-md"
+                      ? "bg-blue-600 text-white rounded-br-md ml-auto"
                       : "bg-slate-100 text-slate-800 rounded-bl-md"
                   )}
                 >
@@ -162,8 +170,10 @@ const TeachersChat: React.FC = () => {
                   ) : (
                     <span className="block">{msg.text}</span>
                   )}
-                  <span className="block text-xs opacity-60 mt-0.5">
-                    {(senderProfile?.name || "Unknown") + " • "}
+                  <span className={cn(
+                    "block text-xs opacity-60 mt-0.5 text-right",
+                    isMe ? "text-white/70" : "text-gray-500"
+                  )}>
                     {msg.timestamp.toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
