@@ -5,7 +5,7 @@ import { useState } from "react";
 import TeachersAccessModal from "./TeachersAccessModal";
 
 const navItems = [
-  // Removed Home button
+  { to: "/", label: "Home", icon: Home },
   { to: "/downloads", label: "Downloads", icon: Download },
   { to: "/notifications", label: "Notifications", icon: Bell },
   { to: "/profile", label: "Profile", icon: User }
@@ -50,3 +50,4 @@ const BottomNav = () => {
 };
 
 export default BottomNav;
+
