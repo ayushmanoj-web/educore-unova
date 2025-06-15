@@ -54,7 +54,7 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === "ayush735602419") {
+    if (password === "password") {
       setShowProfiles(true);
       setError("");
       setProfiles(getStoredProfiles());
