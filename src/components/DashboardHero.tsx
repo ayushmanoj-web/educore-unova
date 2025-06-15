@@ -9,7 +9,7 @@ const DashboardHero = () => (
     <div>
       <h1 className="text-4xl font-bold mb-2 text-blue-900 tracking-tighter">Welcome to Educore</h1>
       <p className="text-lg text-slate-700 mb-4 max-w-xl">
-        Discover courses, complete fun assignments, and track your learning progress — all in one place!
+        Discover courses, complete fun assignments, and track your learning progress and see everything about your education— all in one place!
       </p>
       <a
         href="#courses"
@@ -22,4 +22,3 @@ const DashboardHero = () => (
 );
 
 export default DashboardHero;
-
