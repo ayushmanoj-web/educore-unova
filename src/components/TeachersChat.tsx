@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from "react";
 import { Send, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -189,13 +188,15 @@ const TeachersChat: React.FC = () => {
     });
   };
 
+  // Optimistically show audio message immediately after recording stops & before upload
   const handleSendAudio = async (audioBlob: Blob) => {
     if (!currentUser) return;
     const nowIso = new Date().toISOString();
+    // Use a FileReader to convert to base64 for immediate preview/playback (still pending)
     const reader = new FileReader();
     reader.onloadend = async () => {
       const base64 = reader.result;
-      // Optimistically add (optional, similar to text, if you wish):
+      // Optimistically add message before upload to Supabase
       const tempMsg: Message = {
         id: genTempId(),
         audio_url: typeof base64 === "string" ? base64 : undefined,
@@ -205,6 +206,7 @@ const TeachersChat: React.FC = () => {
         pending: true,
       };
       setMessages(prev => [...prev, tempMsg]);
+      // Now upload to Supabase in background
       await addMessageToSupabase({
         audio_url: typeof base64 === "string" ? base64 : undefined,
         sender_phone: currentUser.phone,
