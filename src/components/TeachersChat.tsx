@@ -1,11 +1,12 @@
 import React, { useRef, useState, useEffect } from "react";
-import { Send, Users } from "lucide-react";
+import { Send, Users, Delete } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import VoiceRecorderButton from "./VoiceRecorderButton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 
 // Type definitions
 type Profile = {
@@ -165,6 +166,9 @@ const TeachersChat: React.FC = () => {
     // Real-time will update state automatically.
   }
 
+  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
+
   const handleSend = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const text = input.trim();
@@ -220,6 +224,60 @@ const TeachersChat: React.FC = () => {
     return profiles.find((p) => p.phone === phone);
   }
 
+  // Helper to delete message from Supabase and then from state
+  async function handleDeleteMessage(message: Message) {
+    setDeletingMessageId(message.id);
+
+    // Only allow deleting own message
+    if (!currentUser || message.sender_phone !== currentUser.phone) {
+      toast({
+        title: "Can't delete",
+        description: "You can only delete your own messages.",
+        variant: "destructive",
+      });
+      setDeletingMessageId(null);
+      return;
+    }
+    // Prevent deleting pending/optimistic messages (not yet saved)
+    if (message.pending) {
+      setMessages((prev) => prev.filter((m) => m.id !== message.id));
+      setSelectedMessageId(null);
+      setDeletingMessageId(null);
+      return;
+    }
+
+    const { error } = await supabase.from("messages").delete().eq("id", message.id);
+    if (error) {
+      toast({
+        title: "Failed to delete message",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      // Remove message locally (realtime will also update)
+      setMessages((prev) => prev.filter((m) => m.id !== message.id));
+      toast({
+        title: "Message deleted",
+      });
+    }
+    setSelectedMessageId(null);
+    setDeletingMessageId(null);
+  }
+
+  // Detect outside click to close delete button
+  useEffect(() => {
+    if (!selectedMessageId) return;
+    function handleClick(e: MouseEvent) {
+      // Only close if clicked outside any message
+      const el = document.getElementById(`chat-msg-${selectedMessageId}`);
+      if (el && !el.contains(e.target as Node)) {
+        setSelectedMessageId(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [selectedMessageId]);
+
   // To avoid duplicates: sort by timestamp & filter out duplicate ids
   const displayedMessages = React.useMemo(() => {
     // Remove duplicate by id (last wins)
@@ -247,14 +305,39 @@ const TeachersChat: React.FC = () => {
             const senderProfile = getProfile(msg.sender_phone);
             const isMe = currentUser && senderProfile && senderProfile.phone === currentUser.phone;
             if (!senderProfile) return null;
+            const isSelected = selectedMessageId === msg.id;
             return (
               <div
                 key={msg.id}
+                id={`chat-msg-${msg.id}`}
                 className={cn(
-                  "mb-2 flex w-full",
+                  "mb-2 flex w-full relative group",
                   isMe ? "justify-end" : "justify-start"
                 )}
+                tabIndex={0}
+                onClick={() => setSelectedMessageId(msg.id)}
+                onKeyDown={e => {
+                  if (e.key === "Enter" || e.key === " ") setSelectedMessageId(msg.id);
+                }}
+                style={{ outline: isSelected ? "2px solid #3b82f6" : "none", borderRadius: 8 }}
               >
+                {/* Delete button appears above message when selected and it's user's own message */}
+                {isSelected && isMe && (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="destructive"
+                    className="absolute -top-8 left-1/2 -translate-x-1/2 z-30 shadow-lg"
+                    aria-label="Delete message"
+                    onClick={e => {
+                      e.stopPropagation();
+                      handleDeleteMessage(msg);
+                    }}
+                    disabled={deletingMessageId === msg.id}
+                  >
+                    <Delete size={18} />
+                  </Button>
+                )}
                 <div className="flex flex-col items-center mr-2 min-w-[48px]">
                   <Avatar className="w-7 h-7 shrink-0 mb-1">
                     {senderProfile.image ? (
