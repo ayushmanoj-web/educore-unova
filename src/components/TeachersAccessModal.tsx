@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
@@ -74,7 +73,7 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
         {!showProfiles ? (
           <form className="flex flex-col gap-4 mt-4" onSubmit={handleSubmit}>
             <label htmlFor="teacher-pass" className="font-medium text-base text-slate-700 text-center">
-              Enter password to access:
+              Password
             </label>
             <div className="relative">
               <Input
