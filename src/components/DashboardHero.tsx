@@ -1,24 +1,19 @@
 
-import { GraduationCap } from "lucide-react";
+import React from "react";
 
 const DashboardHero = () => (
-  <header className="flex items-center gap-8 bg-gradient-to-r from-blue-100 via-white to-green-100 p-8 rounded-2xl mb-10 shadow">
-    <div className="flex-shrink-0 bg-blue-200 rounded-full w-20 h-20 flex items-center justify-center shadow-lg">
-      <GraduationCap size={40} className="text-blue-700" />
-    </div>
-    <div>
-      <h1 className="text-4xl font-bold mb-2 text-blue-900 tracking-tighter">Welcome to Clever Kids Club</h1>
-      <p className="text-lg text-slate-700 mb-4 max-w-xl">
-        Discover courses, complete fun assignments, and track your learning progress — all in one place!
-      </p>
-      <a
-        href="#courses"
-        className="inline-block font-semibold text-white bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg shadow hover:scale-105 transition-transform duration-150 animate-fade-in"
-      >
-        Browse Courses
-      </a>
-    </div>
-  </header>
+  <section className="bg-blue-600 rounded-lg shadow p-8 flex flex-col items-center justify-center text-white mb-8">
+    <h1 className="text-2xl md:text-4xl font-bold mb-2 text-center">Welcome to Educore</h1>
+    <p className="text-lg md:text-xl mb-4 text-center max-w-xl">
+      Your trusted platform for accessible, high-quality education. Discover courses, download resources, and connect with peers and educators.
+    </p>
+    <a
+      href="/downloads"
+      className="inline-block bg-white text-blue-700 font-semibold px-6 py-2 rounded shadow hover:bg-blue-50 transition"
+    >
+      Explore Downloads
+    </a>
+  </section>
 );
 
 export default DashboardHero;

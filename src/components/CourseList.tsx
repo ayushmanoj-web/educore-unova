@@ -1,30 +1,28 @@
 
+import React from "react";
 import CourseCard from "./CourseCard";
 
-const sampleCourses = [
+const courses = [
   {
-    title: "Math Mastery 101",
-    description: "Fun, interactive lessons to build math confidence.",
-    progress: 85,
+    title: "Mathematics Essentials",
+    description: "Master foundational math concepts from algebra to calculus with interactive lessons."
   },
   {
-    title: "Science Explorers",
-    description: "Discover the wonders of the world through experiments.",
-    progress: 60,
+    title: "Introduction to Programming",
+    description: "Learn coding basics using Python and JavaScript with hands-on exercises."
   },
   {
-    title: "History Adventures",
-    description: "Travel to the past and meet famous figures in history.",
-    progress: 35,
-  },
+    title: "Creative Writing",
+    description: "Unlock your writing potential with guided workshops and expert feedback."
+  }
 ];
 
 const CourseList = () => (
-  <section id="courses">
-    <h2 className="text-2xl font-bold text-blue-900 mb-4">Your Courses</h2>
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-      {sampleCourses.map((course, i) => (
-        <CourseCard key={i} {...course} />
+  <section className="w-full my-8">
+    <h2 className="text-xl font-bold text-blue-800 mb-4 text-center">Featured Courses</h2>
+    <div className="grid md:grid-cols-3 gap-4">
+      {courses.map((course) => (
+        <CourseCard key={course.title} {...course} />
       ))}
     </div>
   </section>
