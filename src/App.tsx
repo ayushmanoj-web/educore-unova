@@ -6,7 +6,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import Home from "./pages/Home";
 import Downloads from "./pages/Downloads";
 import Notifications from "./pages/Notifications";
 import Profile from "./pages/Profile";
@@ -24,7 +23,7 @@ const App = () => (
         <div className="pb-16 min-h-screen relative">
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/home" element={<Home />} />
+            {/* Removed the /home route since Home page no longer exists */}
             <Route path="/downloads" element={<Downloads />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/profile" element={<Profile />} />
@@ -39,3 +38,4 @@ const App = () => (
 );
 
 export default App;
+
