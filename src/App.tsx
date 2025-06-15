@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,6 +8,7 @@ import NotFound from "./pages/NotFound";
 import Downloads from "./pages/Downloads";
 import Notifications from "./pages/Notifications";
 import Profile from "./pages/Profile";
+import Courses from "./pages/Courses";
 import BottomNav from "./components/BottomNav";
 import FloatingChatButton from "@/components/FloatingChatButton";
 
@@ -24,6 +24,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             {/* Removed the /home route since Home page no longer exists */}
+            <Route path="/courses" element={<Courses />} />
             <Route path="/downloads" element={<Downloads />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/profile" element={<Profile />} />
@@ -38,4 +39,3 @@ const App = () => (
 );
 
 export default App;
-
