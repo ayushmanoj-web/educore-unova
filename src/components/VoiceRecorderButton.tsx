@@ -71,7 +71,11 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({ onSend, disab
       type="button"
       variant="secondary"
       size="icon"
-      className={`ml-1 select-none ${isRecording ? "bg-red-500 text-white" : ""}`}
+      className={
+        `ml-1 select-none transition-transform duration-200 ease-out
+        ${isRecording ? "bg-red-500 text-white scale-125 z-20" : ""}
+        ${!isRecording ? "scale-100" : ""}`
+      }
       aria-label={isRecording ? "Release to send recording" : "Hold to record"}
       disabled={disabled || isLoading}
       onMouseDown={handlePointerDown}
@@ -80,6 +84,7 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({ onSend, disab
       onMouseLeave={handlePointerUp}
       onTouchEnd={handlePointerUp}
       tabIndex={0}
+      style={{ willChange: "transform" }}
     >
       {isLoading ? (
         <Loader2 className="animate-spin" />
