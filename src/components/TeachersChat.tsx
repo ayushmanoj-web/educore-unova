@@ -4,10 +4,12 @@ import { Send, User, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import VoiceRecorderButton from "./VoiceRecorderButton";
 
 type Message = {
   id: number;
-  text: string;
+  text?: string;
+  audioUrl?: string;
   sender: "me" | "other";
   senderName: string;
   timestamp: Date;
@@ -87,6 +89,19 @@ const TeachersChat: React.FC = () => {
     setInput("");
   };
 
+  const handleSendAudio = (audioBlob: Blob) => {
+    const audioUrl = URL.createObjectURL(audioBlob);
+    const newMsg: Message = {
+      id: messages.length + 1,
+      audioUrl,
+      sender: "me",
+      senderName: myName,
+      timestamp: new Date(),
+    };
+    setMessages((msgs) => [...msgs, newMsg]);
+    // You can revokeObjectURL after component unmounts if needed.
+  };
+
   return (
     <div className="flex flex-col rounded-xl border bg-white shadow animate-fade-in max-h-[420px] min-h-[340px] overflow-hidden">
       <div className="flex items-center gap-2 px-4 py-3 border-b bg-slate-50">
@@ -111,7 +126,13 @@ const TeachersChat: React.FC = () => {
                   : "bg-slate-100 text-slate-800 rounded-bl-md"
               )}
             >
-              <span className="block">{msg.text}</span>
+              {msg.audioUrl ? (
+                <audio controls src={msg.audioUrl} className="w-full mb-1 rounded" preload="auto">
+                  Your browser does not support the audio element.
+                </audio>
+              ) : (
+                <span className="block">{msg.text}</span>
+              )}
               <span className="block text-xs opacity-60 mt-0.5">
                 {msg.senderName} •{" "}
                 {msg.timestamp.toLocaleTimeString([], {
@@ -140,6 +161,7 @@ const TeachersChat: React.FC = () => {
           }}
           aria-label="Chat message text"
         />
+        <VoiceRecorderButton onSend={handleSendAudio} disabled={false} />
         <Button
           type="submit"
           size="icon"
