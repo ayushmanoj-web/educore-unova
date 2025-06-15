@@ -27,10 +27,9 @@ const FloatingChatButton = () => {
         <SheetHeader>
           <SheetTitle className="sr-only">Class Group Chat</SheetTitle>
         </SheetHeader>
-        <div className="flex-1 flex">
-          <div className="flex-1 flex flex-col justify-center">
-            <TeachersChat />
-          </div>
+        {/* Remove flex-1 + centering, make sure chat hugs the top */}
+        <div className="w-full flex-shrink-0">
+          <TeachersChat />
         </div>
       </SheetContent>
     </Sheet>
@@ -38,3 +37,4 @@ const FloatingChatButton = () => {
 };
 
 export default FloatingChatButton;
+
