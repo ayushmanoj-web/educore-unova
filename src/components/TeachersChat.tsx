@@ -8,6 +8,7 @@ import VoiceRecorderButton from "./VoiceRecorderButton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 
+// Type definitions
 type Profile = {
   name: string;
   class: string;
@@ -22,7 +23,7 @@ type Message = {
   text?: string | null;
   audio_url?: string | null;
   sender_phone: string;
-  timestamp: string; // as ISO string
+  timestamp: string;
 };
 
 // Util to get current user (last profile in localStorage)
@@ -70,7 +71,6 @@ const TeachersChat: React.FC = () => {
         console.error("Failed to load messages:", error);
         return;
       }
-      // Type assertions to Message type for safety
       setMessages(
         (data ?? []).map((m: any) => ({
           ...m,
@@ -95,9 +95,7 @@ const TeachersChat: React.FC = () => {
         (payload) => {
           const m = payload.new;
           setMessages((prev) => {
-            // Don't add duplicates on self-send
             if (!prev.some(msg => msg.id === m.id)) {
-              // Type assertion to Message for safety
               return [
                 ...prev,
                 {
@@ -131,14 +129,23 @@ const TeachersChat: React.FC = () => {
     msgEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  async function addMessageToSupabase(content: Partial<Message>) {
-    const { data, error } = await supabase
+  // The correct type for Supabase insert
+  type MessageInsert = {
+    text?: string | null;
+    audio_url?: string | null;
+    sender_phone: string;
+    timestamp?: string;
+  };
+
+  async function addMessageToSupabase(content: MessageInsert) {
+    // 'content' must always have sender_phone, matching table requirements.
+    const { error } = await supabase
       .from("messages")
-      .insert([{ ...content }]);
+      .insert([content]);
     if (error) {
       console.error("Failed to send message:", error);
     }
-    // No need to manually update - realtime will trigger.
+    // Realtime will update state automatically.
   }
 
   const handleSend = async (e?: React.FormEvent) => {
@@ -273,4 +280,3 @@ const TeachersChat: React.FC = () => {
 };
 
 export default TeachersChat;
-
