@@ -9,6 +9,7 @@ import Downloads from "./pages/Downloads";
 import Notifications from "./pages/Notifications";
 import Profile from "./pages/Profile";
 import Courses from "./pages/Courses";
+import Textbooks from "./pages/Textbooks";
 import BottomNav from "./components/BottomNav";
 import FloatingChatButton from "@/components/FloatingChatButton";
 
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/downloads" element={<Downloads />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/textbooks" element={<Textbooks />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <BottomNav />
