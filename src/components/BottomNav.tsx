@@ -7,6 +7,8 @@ const navItems = [
   { to: "/downloads", label: "Downloads", icon: Download },
   { to: "/notifications", label: "Notifications", icon: Bell },
   { to: "/profile", label: "Profile", icon: User },
+  // Add the "For Teachers" button, which links to "/home" 
+  { to: "/home", label: "For Teachers", icon: Home },
 ];
 
 const BottomNav = () => {
@@ -35,3 +37,4 @@ const BottomNav = () => {
 };
 
 export default BottomNav;
+
