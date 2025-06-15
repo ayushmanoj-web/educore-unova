@@ -1,4 +1,3 @@
-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -43,14 +42,30 @@ const Profile = () => {
     phone: "",
   });
 
+  const [nameAvailable, setNameAvailable] = useState<null | boolean>(null);
+
   useEffect(() => {
     // If profile already exists for this device, load the latest one (by phone number)
     const profiles = getStoredProfiles();
     if (profiles.length > 0) {
-      // Try to find the most recent profile for this device by phone (can be improved)
       setForm(profiles[profiles.length - 1]);
     }
   }, []);
+
+  // Check name availability whenever name changes
+  useEffect(() => {
+    if (!form.name.trim()) {
+      setNameAvailable(null);
+      return;
+    }
+    const profiles = getStoredProfiles();
+    // Allow the in-use name if it's the same as the current user's own profile
+    const isTaken = profiles.some(
+      (p) => p.name.trim().toLowerCase() === form.name.trim().toLowerCase() &&
+      p.phone !== form.phone // only disallow if it's a different phone number
+    );
+    setNameAvailable(!isTaken);
+  }, [form.name, form.phone]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -58,7 +73,6 @@ const Profile = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Save to localStorage
     saveProfile(form);
     alert("Profile saved (on this device only). Teachers can now see your profile!");
   };
@@ -80,7 +94,14 @@ const Profile = () => {
                 value={form.name}
                 onChange={handleChange}
                 required
+                autoComplete="off"
               />
+              {nameAvailable === false && (
+                <span className="text-xs text-red-600">This name is already taken by another profile.</span>
+              )}
+              {nameAvailable === true && form.name.trim() && (
+                <span className="text-xs text-green-600">This name is available!</span>
+              )}
             </div>
             <div>
               <Label htmlFor="class">Class</Label>
@@ -129,7 +150,13 @@ const Profile = () => {
                 required
               />
             </div>
-            <Button className="w-full mt-2" type="submit">Update Profile</Button>
+            <Button 
+              className="w-full mt-2" 
+              type="submit"
+              disabled={nameAvailable === false}
+            >
+              Update Profile
+            </Button>
           </form>
         </CardContent>
       </Card>
