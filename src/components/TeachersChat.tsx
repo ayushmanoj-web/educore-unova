@@ -19,13 +19,13 @@ type Profile = {
 
 type Message = {
   id: string;
-  text?: string;
-  audio_url?: string;
+  text?: string | null;
+  audio_url?: string | null;
   sender_phone: string;
-  timestamp: string; // as ISO string for easy display/conversion
+  timestamp: string; // as ISO string
 };
 
-// Util to get the current user (last profile in localStorage)
+// Util to get current user (last profile in localStorage)
 function getStoredProfiles(): Profile[] {
   try {
     const data = localStorage.getItem("student-profiles");
@@ -40,7 +40,6 @@ function getCurrentUser(): Profile | undefined {
   return profiles[profiles.length - 1];
 }
 
-// Util to get initials from name
 function getInitials(name: string) {
   return name
     .split(" ")
@@ -49,13 +48,11 @@ function getInitials(name: string) {
     .slice(0, 2);
 }
 
-// No welcome/system messages: only user content from here on!
 const TeachersChat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const msgEndRef = useRef<HTMLDivElement | null>(null);
 
-  // Keep profile info in chat
   const [profiles, setProfiles] = useState<Profile[]>(() => getStoredProfiles());
   const currentUser = getCurrentUser();
 
@@ -73,12 +70,14 @@ const TeachersChat: React.FC = () => {
         console.error("Failed to load messages:", error);
         return;
       }
-      // Map data to Message[]
+      // Type assertions to Message type for safety
       setMessages(
         (data ?? []).map((m: any) => ({
           ...m,
-          timestamp: typeof m.timestamp === "string" ? m.timestamp : new Date(m.timestamp).toISOString(),
-        }))
+          timestamp: typeof m.timestamp === "string"
+            ? m.timestamp
+            : new Date(m.timestamp).toISOString(),
+        })) as Message[]
       );
     }
     fetchMessages();
@@ -95,10 +94,19 @@ const TeachersChat: React.FC = () => {
         { event: "INSERT", schema: "public", table: "messages" },
         (payload) => {
           const m = payload.new;
-          setMessages(prev => {
+          setMessages((prev) => {
             // Don't add duplicates on self-send
             if (!prev.some(msg => msg.id === m.id)) {
-              return [...prev, { ...m, timestamp: typeof m.timestamp === "string" ? m.timestamp : new Date(m.timestamp).toISOString() }];
+              // Type assertion to Message for safety
+              return [
+                ...prev,
+                {
+                  ...m,
+                  timestamp: typeof m.timestamp === "string"
+                    ? m.timestamp
+                    : new Date(m.timestamp).toISOString()
+                } as Message,
+              ];
             }
             return prev;
           });
@@ -110,13 +118,11 @@ const TeachersChat: React.FC = () => {
     };
   }, []);
 
-  // Reload latest profiles if changed outside
   useEffect(() => {
     const handle = () => setProfiles(getStoredProfiles());
     window.addEventListener("storage", handle);
     return () => window.removeEventListener("storage", handle);
   }, []);
-  // When a new profile is added, reload chat user info
   useEffect(() => {
     setProfiles(getStoredProfiles());
   }, []);
@@ -135,7 +141,6 @@ const TeachersChat: React.FC = () => {
     // No need to manually update - realtime will trigger.
   }
 
-  // Submit text message
   const handleSend = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const text = input.trim();
@@ -148,12 +153,8 @@ const TeachersChat: React.FC = () => {
     setInput("");
   };
 
-  // Handle audio
   const handleSendAudio = async (audioBlob: Blob) => {
     if (!currentUser) return;
-    // Upload the audio to Supabase Storage? For demo, store as base64 blob (not for prod!)
-    // Use URL.createObjectURL for local, but for cross-device persistence, store data.
-    // We'll store a base64-encoded audio blob in the DB (not scalable, but works as a demo)
     const reader = new FileReader();
     reader.onloadend = async () => {
       const base64 = reader.result;
@@ -166,7 +167,6 @@ const TeachersChat: React.FC = () => {
     reader.readAsDataURL(audioBlob);
   };
 
-  // Get profile info for message sender
   function getProfile(phone: string): Profile | undefined {
     return profiles.find((p) => p.phone === phone);
   }
@@ -187,17 +187,15 @@ const TeachersChat: React.FC = () => {
           messages.map((msg) => {
             const senderProfile = getProfile(msg.sender_phone);
             const isMe = currentUser && senderProfile && senderProfile.phone === currentUser.phone;
-            if (!senderProfile) return null; // Hide messages if no profile (extra safety, shouldn't happen)
+            if (!senderProfile) return null;
             return (
               <div
                 key={msg.id}
                 className={cn(
                   "mb-2 flex w-full",
-                  // always align avatar left, bubble placement adjusts if user
                   isMe ? "justify-end" : "justify-start"
                 )}
               >
-                {/* Avatar + name column */}
                 <div className="flex flex-col items-center mr-2 min-w-[48px]">
                   <Avatar className="w-7 h-7 shrink-0 mb-1">
                     {senderProfile.image ? (
@@ -212,7 +210,6 @@ const TeachersChat: React.FC = () => {
                     {senderProfile.name}
                   </span>
                 </div>
-                {/* Message bubble */}
                 <div
                   className={cn(
                     "rounded-lg px-3 py-2 max-w-[75%] text-base flex flex-col shadow-sm",
@@ -222,8 +219,7 @@ const TeachersChat: React.FC = () => {
                   )}
                 >
                   {msg.audio_url ? (
-                    // If audio_url is "data:..." just treat as src; for prod, should use bucket url
-                    <audio controls src={msg.audio_url} className="w-full mb-1 rounded" preload="auto">
+                    <audio controls src={msg.audio_url ?? undefined} className="w-full mb-1 rounded" preload="auto">
                       Your browser does not support the audio element.
                     </audio>
                   ) : (
