@@ -1,9 +1,9 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { User } from "lucide-react";
+import { User, Phone } from "lucide-react";
 
 type TeachersAccessModalProps = {
   open: boolean;
@@ -18,46 +18,28 @@ type Profile = {
   phone: string;
 };
 
-// Mocked list for demo (replace this with actual data if backend is available)
-const students: Profile[] = [
-  {
-    name: "Ayush Gupta",
-    class: "6",
-    division: "A",
-    dob: "2012-05-15",
-    phone: "735602419",
-  },
-  {
-    name: "Riya Sharma",
-    class: "5",
-    division: "B",
-    dob: "2013-09-22",
-    phone: "9123498765",
-  },
-  {
-    name: "Dev Patel",
-    class: "6",
-    division: "C",
-    dob: "2012-02-11",
-    phone: "8695231407",
-  },
-];
+const LOCAL_STORAGE_KEY = "student-profiles";
+
+const getStoredProfiles = (): Profile[] => {
+  try {
+    const data = localStorage.getItem(LOCAL_STORAGE_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+};
 
 const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) => {
   const [password, setPassword] = useState("");
   const [showProfiles, setShowProfiles] = useState(false);
   const [error, setError] = useState("");
+  const [profiles, setProfiles] = useState<Profile[]>([]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password === "ayush735602419") {
-      setShowProfiles(true);
-      setError("");
-    } else {
-      setError("Incorrect password. Try again.");
-      setShowProfiles(false);
+  useEffect(() => {
+    if (showProfiles) {
+      setProfiles(getStoredProfiles());
     }
-  };
+  }, [showProfiles, open]);
 
   // Reset state when closing
   const handleOpenChange = (isOpen: boolean) => {
@@ -66,6 +48,18 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
       setPassword("");
       setShowProfiles(false);
       setError("");
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password === "ayush735602419") {
+      setShowProfiles(true);
+      setError("");
+      setProfiles(getStoredProfiles());
+    } else {
+      setError("Incorrect password. Try again.");
+      setShowProfiles(false);
     }
   };
 
@@ -98,23 +92,36 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
           </form>
         ) : (
           <div className="mt-2 flex flex-col gap-3 overflow-y-auto max-h-[60vh]">
-            {students.map((student, idx) => (
-              <div key={idx} className="flex items-center gap-3 border rounded-xl px-4 py-3 shadow bg-slate-50">
-                <User className="text-blue-700" />
-                <div className="flex flex-col">
-                  <span className="font-semibold text-blue-900">{student.name}</span>
-                  <span className="text-sm text-slate-700">
-                    Class: <b>{student.class}</b> | Division: <b>{student.division}</b>
-                  </span>
-                  <span className="text-sm text-gray-600">
-                    DOB: {student.dob}
-                  </span>
-                  <span className="text-sm text-gray-600">
-                    Phone: {student.phone}
-                  </span>
+            {profiles.length === 0 ? (
+              <span className="text-center text-sm text-slate-500">No student profiles available yet.</span>
+            ) : (
+              profiles.map((student, idx) => (
+                <div key={student.phone + idx} className="flex items-center gap-3 border rounded-xl px-4 py-3 shadow bg-slate-50">
+                  <User className="text-blue-700" />
+                  <div className="flex flex-col flex-1">
+                    <span className="font-semibold text-blue-900">{student.name}</span>
+                    <span className="text-sm text-slate-700">
+                      Class: <b>{student.class}</b> | Division: <b>{student.division}</b>
+                    </span>
+                    <span className="text-sm text-gray-600">
+                      DOB: {student.dob}
+                    </span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-sm text-gray-600">
+                        Phone: {student.phone}
+                      </span>
+                      <a
+                        className="ml-2 px-2 py-1 rounded text-white bg-blue-600 hover:bg-blue-700 text-xs flex items-center gap-1"
+                        href={`tel:${student.phone}`}
+                        title={`Call ${student.name}`}
+                      >
+                        <Phone size={16} /> Call
+                      </a>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         )}
       </SheetContent>

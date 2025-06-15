@@ -3,10 +3,39 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+type Profile = {
+  name: string;
+  class: string;
+  division: string;
+  dob: string;
+  phone: string;
+};
+
+const LOCAL_STORAGE_KEY = "student-profiles";
+
+const getStoredProfiles = (): Profile[] => {
+  try {
+    const data = localStorage.getItem(LOCAL_STORAGE_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveProfile = (profile: Profile) => {
+  const profiles = getStoredProfiles();
+  // If a profile with same phone exists, replace it; else add new
+  const updatedProfiles = [
+    ...profiles.filter(p => p.phone !== profile.phone),
+    profile,
+  ];
+  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedProfiles));
+};
 
 const Profile = () => {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<Profile>({
     name: "",
     class: "",
     division: "",
@@ -14,15 +43,24 @@ const Profile = () => {
     phone: "",
   });
 
-  // Only local form state (not persistent)
+  useEffect(() => {
+    // If profile already exists for this device, load the latest one (by phone number)
+    const profiles = getStoredProfiles();
+    if (profiles.length > 0) {
+      // Try to find the most recent profile for this device by phone (can be improved)
+      setForm(profiles[profiles.length - 1]);
+    }
+  }, []);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Show a simple alert for now
-    alert("Profile updated (locally only)");
+    // Save to localStorage
+    saveProfile(form);
+    alert("Profile saved (on this device only). Teachers can now see your profile!");
   };
 
   return (
@@ -41,6 +79,7 @@ const Profile = () => {
                 placeholder="Enter your name"
                 value={form.name}
                 onChange={handleChange}
+                required
               />
             </div>
             <div>
@@ -51,6 +90,7 @@ const Profile = () => {
                 placeholder="Enter your class"
                 value={form.class}
                 onChange={handleChange}
+                required
               />
             </div>
             <div>
@@ -61,6 +101,7 @@ const Profile = () => {
                 placeholder="Enter your division"
                 value={form.division}
                 onChange={handleChange}
+                required
               />
             </div>
             <div>
@@ -72,6 +113,7 @@ const Profile = () => {
                 value={form.dob}
                 onChange={handleChange}
                 max={new Date().toISOString().slice(0, 10)}
+                required
               />
             </div>
             <div>
@@ -84,6 +126,7 @@ const Profile = () => {
                 value={form.phone}
                 onChange={handleChange}
                 pattern="[0-9]*"
+                required
               />
             </div>
             <Button className="w-full mt-2" type="submit">Update Profile</Button>
