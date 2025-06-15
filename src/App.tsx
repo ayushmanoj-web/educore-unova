@@ -11,7 +11,6 @@ import Downloads from "./pages/Downloads";
 import Notifications from "./pages/Notifications";
 import Profile from "./pages/Profile";
 import BottomNav from "./components/BottomNav";
-import AIChatWidget from "@/components/AIChatWidget";
 import FloatingChatButton from "@/components/FloatingChatButton";
 
 const queryClient = new QueryClient();
@@ -33,7 +32,6 @@ const App = () => (
           </Routes>
           <BottomNav />
           <FloatingChatButton />
-          <AIChatWidget />
         </div>
       </BrowserRouter>
     </TooltipProvider>
