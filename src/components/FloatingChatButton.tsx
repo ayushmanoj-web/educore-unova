@@ -1,8 +1,11 @@
 
-import { useState } from "react";
 import { MessageCircle } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import TeachersChat from "@/components/TeachersChat";
+
+// Custom full-screen class for SheetContent
+const fullScreenClass =
+  "fixed inset-0 z-50 w-full h-full max-w-full max-h-full top-0 left-0 rounded-none p-0 bg-white animate-fade-in flex flex-col";
 
 const FloatingChatButton = () => {
   // Open state is managed internally by Sheet
@@ -17,12 +20,17 @@ const FloatingChatButton = () => {
           <span className="font-bold text-base hidden sm:inline">Chat</span>
         </button>
       </SheetTrigger>
-      <SheetContent side="bottom" className="max-h-[95vh] p-1 sm:max-w-md sm:mx-auto overflow-hidden rounded-t-xl">
+      <SheetContent
+        side="bottom"
+        className={fullScreenClass}
+      >
         <SheetHeader>
           <SheetTitle className="sr-only">Class Group Chat</SheetTitle>
         </SheetHeader>
-        <div className="h-[420px] max-h-[70vh] mt-2">
-          <TeachersChat />
+        <div className="flex-1 flex">
+          <div className="flex-1 flex flex-col justify-center">
+            <TeachersChat />
+          </div>
         </div>
       </SheetContent>
     </Sheet>
