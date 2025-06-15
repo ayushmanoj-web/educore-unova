@@ -9,30 +9,7 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      messages: {
-        Row: {
-          audio_url: string | null
-          id: string
-          sender_phone: string
-          text: string | null
-          timestamp: string
-        }
-        Insert: {
-          audio_url?: string | null
-          id?: string
-          sender_phone: string
-          text?: string | null
-          timestamp?: string
-        }
-        Update: {
-          audio_url?: string | null
-          id?: string
-          sender_phone?: string
-          text?: string | null
-          timestamp?: string
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Views: {
       [_ in never]: never
