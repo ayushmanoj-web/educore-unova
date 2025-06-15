@@ -50,27 +50,9 @@ function getInitials(name: string) {
     .slice(0, 2);
 }
 
-const WELCOME_MSGS: Omit<Message, "id">[] = [
-  {
-    text: "Welcome to the Class Group Chat! 👋",
-    senderPhone: "system",
-    timestamp: new Date(),
-  },
-  {
-    text: "Feel free to ask questions and share your updates here.",
-    senderPhone: "system",
-    timestamp: new Date(),
-  },
-];
-
+// No welcome/system messages: only user content from here on!
 const TeachersChat: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>(() => {
-    // Only show welcome messages if no user messages exist yet
-    return WELCOME_MSGS.map((m, idx) => ({
-      ...m,
-      id: idx + 1,
-    }));
-  });
+  const [messages, setMessages] = useState<Message[]>([]); // Start with an empty message list
   const [input, setInput] = useState("");
   const msgEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -128,20 +110,8 @@ const TeachersChat: React.FC = () => {
 
   // Get profile info for message sender
   function getProfile(phone: string): Profile | undefined {
-    if (phone === "system") {
-      return {
-        name: "Ms. Smith",
-        class: "",
-        division: "",
-        dob: "",
-        phone: "system",
-        image: undefined,
-      };
-    }
     return profiles.find((p) => p.phone === phone);
   }
-
-  // You can also make "group chat" feel by listing everyone whos ever chatted here. (future idea)
 
   return (
     <div className="flex flex-col rounded-xl border bg-white shadow animate-fade-in max-h-[420px] min-h-[340px] overflow-hidden">
@@ -151,52 +121,59 @@ const TeachersChat: React.FC = () => {
         <span className="ml-auto text-xs text-slate-400">For Teachers & Students</span>
       </div>
       <div className="flex-1 overflow-y-auto px-3 py-2 bg-gradient-to-b from-blue-50 via-white to-blue-50">
-        {messages.map((msg) => {
-          const senderProfile = getProfile(msg.senderPhone);
-          const isMe = currentUser && senderProfile && senderProfile.phone === currentUser.phone;
-          return (
-            <div
-              key={msg.id}
-              className={cn(
-                "mb-1 flex items-end gap-2",
-                isMe ? "justify-end flex-row-reverse" : "justify-start"
-              )}
-            >
-              <Avatar className="w-7 h-7 shrink-0">
-                {senderProfile?.image ? (
-                  <AvatarImage src={senderProfile.image} alt={senderProfile.name} />
-                ) : (
-                  <AvatarFallback>
-                    {getInitials(senderProfile?.name || "U")}
-                  </AvatarFallback>
-                )}
-              </Avatar>
+        {messages.length === 0 ? (
+          <div className="text-center text-sm text-slate-400 mt-10">
+            Start the conversation by sending a message!
+          </div>
+        ) : (
+          messages.map((msg) => {
+            const senderProfile = getProfile(msg.senderPhone);
+            const isMe = currentUser && senderProfile && senderProfile.phone === currentUser.phone;
+            if (!senderProfile) return null; // Hide messages if no profile (extra safety, shouldn't happen)
+            return (
               <div
+                key={msg.id}
                 className={cn(
-                  "rounded-lg px-3 py-2 max-w-[75%] text-base",
-                  isMe
-                    ? "bg-blue-600 text-white rounded-br-md"
-                    : "bg-slate-100 text-slate-800 rounded-bl-md"
+                  "mb-1 flex items-end gap-2",
+                  isMe ? "justify-end flex-row-reverse" : "justify-start"
                 )}
               >
-                {msg.audioUrl ? (
-                  <audio controls src={msg.audioUrl} className="w-full mb-1 rounded" preload="auto">
-                    Your browser does not support the audio element.
-                  </audio>
-                ) : (
-                  <span className="block">{msg.text}</span>
-                )}
-                <span className="block text-xs opacity-60 mt-0.5">
-                  {(senderProfile?.name || "Unknown") + " • "}
-                  {msg.timestamp.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
+                <Avatar className="w-7 h-7 shrink-0">
+                  {senderProfile.image ? (
+                    <AvatarImage src={senderProfile.image} alt={senderProfile.name} />
+                  ) : (
+                    <AvatarFallback>
+                      {getInitials(senderProfile?.name || "U")}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <div
+                  className={cn(
+                    "rounded-lg px-3 py-2 max-w-[75%] text-base",
+                    isMe
+                      ? "bg-blue-600 text-white rounded-br-md"
+                      : "bg-slate-100 text-slate-800 rounded-bl-md"
+                  )}
+                >
+                  {msg.audioUrl ? (
+                    <audio controls src={msg.audioUrl} className="w-full mb-1 rounded" preload="auto">
+                      Your browser does not support the audio element.
+                    </audio>
+                  ) : (
+                    <span className="block">{msg.text}</span>
+                  )}
+                  <span className="block text-xs opacity-60 mt-0.5">
+                    {(senderProfile?.name || "Unknown") + " • "}
+                    {msg.timestamp.toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
         <div ref={msgEndRef} />
       </div>
       <form
