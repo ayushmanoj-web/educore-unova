@@ -87,20 +87,23 @@ const ChatBox: React.FC = () => {
 
   return (
     <>
-      {/* Floating Button */}
+      {/* Sidebar Open Button */}
       {!open && (
         <button
-          className="fixed bottom-6 right-6 z-40 rounded-full bg-blue-600 hover:bg-blue-700 shadow-xl p-4 text-white flex items-center gap-2 transition-all md:bottom-8 md:right-10"
+          className="fixed top-1/2 right-0 z-40 -translate-y-1/2 rounded-l-xl rounded-r-none bg-blue-600 hover:bg-blue-700 shadow-xl p-4 text-white flex items-center gap-2 transition-all"
           onClick={() => setOpen(true)}
           aria-label="Open chat"
+          style={{ writingMode: "vertical-lr", transform: "translateY(-50%) rotate(180deg)"}}
         >
-          <MessageSquare className="mr-1" />
-          Chat
+          <span className="flex flex-row items-center gap-2" style={{ writingMode: "horizontal-tb", transform: "rotate(180deg)" }}>
+            <MessageSquare className="mr-1" />
+            Chat
+          </span>
         </button>
       )}
-      {/* Chat Dialog */}
+      {/* Chat Sidebar */}
       {open && (
-        <div className="fixed bottom-4 right-4 sm:right-8 z-50 w-[88vw] max-w-xs md:max-w-sm bg-white border shadow-xl rounded-xl flex flex-col animate-in fade-in">
+        <div className="fixed inset-y-0 right-0 z-50 w-full max-w-xs md:max-w-sm bg-white border-l shadow-2xl rounded-none flex flex-col animate-in fade-in">
           <div className="flex items-center justify-between gap-2 p-3 border-b">
             <span className="font-semibold text-blue-700 flex items-center gap-2">
               <MessageSquare className="w-5 h-5" />
@@ -110,7 +113,7 @@ const ChatBox: React.FC = () => {
           </div>
           <div className="flex-1 min-h-[200px] bg-blue-50/60 flex flex-col">
             {phone ? (
-              <ScrollArea className="flex-1 px-2 py-1" style={{ maxHeight: 320 }}>
+              <ScrollArea className="flex-1 px-2 py-1" style={{ maxHeight: "calc(100dvh - 132px)" }}>
                 <div>
                   {messages.length === 0 && (
                     <div className="text-center mt-10 text-slate-400 text-sm">No messages yet.</div>
