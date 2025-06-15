@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,6 +10,7 @@ import Downloads from "./pages/Downloads";
 import Notifications from "./pages/Notifications";
 import Profile from "./pages/Profile";
 import BottomNav from "./components/BottomNav";
+import AIChatWidget from "@/components/AIChatWidget";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +31,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
           <BottomNav />
+          <AIChatWidget />
         </div>
       </BrowserRouter>
     </TooltipProvider>
