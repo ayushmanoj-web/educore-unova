@@ -4,12 +4,13 @@ import { Home, Download, Bell, User, Lock } from "lucide-react";
 import { useState } from "react";
 import TeachersAccessModal from "./TeachersAccessModal";
 
+// Add "Home" as the first nav item
 const navItems = [
-  // Removed Home button
+  { to: "/", label: "Home", icon: Home },
   { to: "/downloads", label: "Downloads", icon: Download },
   { to: "/notifications", label: "Notifications", icon: Bell },
   { to: "/profile", label: "Profile", icon: User }
-  // "For Teachers" removed here, it's a special button below
+  // "For Teachers" stays as a special button below
 ];
 
 const BottomNav = () => {
@@ -50,3 +51,4 @@ const BottomNav = () => {
 };
 
 export default BottomNav;
+
