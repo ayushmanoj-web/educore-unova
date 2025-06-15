@@ -1,6 +1,6 @@
-
 import DashboardHero from "@/components/DashboardHero";
 import CourseList from "@/components/CourseList";
+import ChatBox from "@/components/ChatBox";
 
 const Index = () => {
   return (
@@ -35,6 +35,7 @@ const Index = () => {
           </aside>
         </div>
       </main>
+      <ChatBox />
     </div>
   );
 };
