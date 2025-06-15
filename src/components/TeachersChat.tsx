@@ -63,6 +63,11 @@ const TeachersChat: React.FC = () => {
   const [profiles, setProfiles] = useState<Profile[]>(() => getStoredProfiles());
   const currentUser = getCurrentUser();
 
+  // Log all loaded profiles when loaded or updated
+  useEffect(() => {
+    console.log("Loaded profiles from localStorage:", profiles);
+  }, [profiles]);
+
   // Fetch messages from Supabase on mount
   useEffect(() => {
     let isMounted = true;
@@ -303,6 +308,18 @@ const TeachersChat: React.FC = () => {
         ) : (
           displayedMessages.map((msg) => {
             const senderProfile = getProfile(msg.sender_phone);
+            if (senderProfile) {
+              // Log the senderProfile for each message, especially the image property
+              console.log(
+                "Rendering message id", msg.id,
+                "sender phone:", msg.sender_phone,
+                "senderProfile:", senderProfile,
+                "senderProfile.image:", senderProfile?.image
+              );
+            } else {
+              // Log if senderProfile was missing
+              console.warn("No profile found for sender phone:", msg.sender_phone);
+            }
             const isMe = currentUser && senderProfile && senderProfile.phone === currentUser.phone;
             if (!senderProfile) return null;
             const isSelected = selectedMessageId === msg.id;
@@ -341,7 +358,10 @@ const TeachersChat: React.FC = () => {
                 <div className="flex flex-col items-center mr-2 min-w-[48px]">
                   <Avatar className="w-7 h-7 shrink-0 mb-1">
                     {senderProfile.image ? (
-                      <AvatarImage src={senderProfile.image} alt={senderProfile.name} />
+                      <>
+                        {console.log("AvatarImage src being set to:", senderProfile.image)}
+                        <AvatarImage src={senderProfile.image} alt={senderProfile.name} />
+                      </>
                     ) : (
                       <AvatarFallback>
                         {getInitials(senderProfile?.name || "U")}
