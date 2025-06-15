@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,6 +12,7 @@ import Notifications from "./pages/Notifications";
 import Profile from "./pages/Profile";
 import BottomNav from "./components/BottomNav";
 import AIChatWidget from "@/components/AIChatWidget";
+import FloatingChatButton from "@/components/FloatingChatButton";
 
 const queryClient = new QueryClient();
 
@@ -20,17 +22,17 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <div className="pb-16 min-h-screen relative"> {/* Padding for BottomNav */}
+        <div className="pb-16 min-h-screen relative">
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/home" element={<Home />} />
             <Route path="/downloads" element={<Downloads />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/profile" element={<Profile />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
           <BottomNav />
+          <FloatingChatButton />
           <AIChatWidget />
         </div>
       </BrowserRouter>
