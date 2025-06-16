@@ -4,6 +4,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { User, Phone, Eye, EyeOff, Users, Bell } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 
@@ -18,6 +19,7 @@ type Profile = {
   division: string;
   dob: string;
   phone: string;
+  image?: string;
 };
 
 type ViewMode = "menu" | "password" | "profiles" | "notifications";
@@ -76,6 +78,7 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
               division: profile.division,
               dob: profile.dob,
               phone: profile.phone,
+              image: profile.image || undefined,
             }));
             allProfiles = [...formattedSupabaseProfiles];
           }
@@ -127,7 +130,7 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
     }
   };
 
-  const handleSendNotification = () => {
+  const handleSendNotification = async () => {
     if (!notificationMessage.trim()) {
       toast({
         title: "Error",
@@ -137,14 +140,49 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
       return;
     }
 
-    // Here you would typically send the notification to all students
-    // For now, we'll just show a success message
-    toast({
-      title: "Notification sent!",
-      description: `Message sent to all ${profiles.length} students.`,
-    });
-    setNotificationMessage("");
-    setViewMode("menu");
+    try {
+      // Get current profiles to send notifications to
+      let allProfiles: Profile[] = [];
+
+      if (isAuthenticated) {
+        const { data: supabaseProfiles, error } = await supabase
+          .from('profiles')
+          .select('*');
+
+        if (supabaseProfiles && !error) {
+          allProfiles = supabaseProfiles.map(profile => ({
+            name: profile.name,
+            class: profile.class,
+            division: profile.division,
+            dob: profile.dob,
+            phone: profile.phone,
+            image: profile.image || undefined,
+          }));
+        }
+      }
+
+      // Also get localStorage profiles
+      const localProfiles = getStoredProfiles();
+      const phoneNumbers = new Set(allProfiles.map(p => p.phone));
+      const uniqueLocalProfiles = localProfiles.filter(p => !phoneNumbers.has(p.phone));
+      const totalProfiles = [...allProfiles, ...uniqueLocalProfiles];
+
+      // Here you would implement actual notification sending
+      // For now, we'll show a success message
+      toast({
+        title: "Notification sent!",
+        description: `Message "${notificationMessage}" sent to ${totalProfiles.length} students.`,
+      });
+      
+      setNotificationMessage("");
+      setViewMode("menu");
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send notifications. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleBackToMenu = () => {
@@ -168,6 +206,14 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
         return "For Teachers Only";
     }
   };
+
+  function getInitials(name: string) {
+    return name
+      .split(" ")
+      .map((n) => n[0]?.toUpperCase())
+      .join("")
+      .slice(0, 2);
+  }
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
@@ -257,7 +303,15 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
                   )}
                   {profiles.map((student, idx) => (
                     <div key={student.phone + idx} className="flex items-center gap-3 border rounded-xl px-4 py-3 shadow bg-slate-50">
-                      <User className="text-blue-700" />
+                      <Avatar className="w-12 h-12">
+                        {student.image ? (
+                          <AvatarImage src={student.image} alt={student.name} />
+                        ) : (
+                          <AvatarFallback className="bg-blue-100 text-blue-800">
+                            {getInitials(student.name)}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
                       <div className="flex flex-col flex-1">
                         <span className="font-semibold text-blue-900">{student.name}</span>
                         <span className="text-sm text-slate-700">
