@@ -5,6 +5,8 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef } from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 
 type Profile = {
   name: string;
@@ -17,6 +19,7 @@ type Profile = {
 
 const LOCAL_STORAGE_KEY = "student-profiles";
 
+// Utility functions for localStorage (kept for backward compatibility)
 const getStoredProfiles = (): Profile[] => {
   try {
     const data = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -26,9 +29,8 @@ const getStoredProfiles = (): Profile[] => {
   }
 };
 
-const saveProfile = (profile: Profile) => {
+const saveProfileLocally = (profile: Profile) => {
   const profiles = getStoredProfiles();
-  // If a profile with same phone exists, replace it; else add new
   const updatedProfiles = [
     ...profiles.filter(p => p.phone !== profile.phone),
     profile,
@@ -49,45 +51,124 @@ const Profile = () => {
   const [nameAvailable, setNameAvailable] = useState<null | boolean>(null);
   const [imagePreview, setImagePreview] = useState<string | undefined>();
   const [imageFileName, setImageFileName] = useState<string | undefined>();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Check authentication status
   useEffect(() => {
-    // If profile already exists for this device, load the latest one (by phone number)
-    const profiles = getStoredProfiles();
-    if (profiles.length > 0) {
-      const last = profiles[profiles.length - 1];
-      setForm(last);
-      setImagePreview(last.image || undefined);
-    }
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session);
+    };
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsAuthenticated(!!session);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
+  // Load profile data on mount
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (isAuthenticated) {
+        // If authenticated, try to load from Supabase first
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const { data: profiles, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .single();
+
+          if (profiles && !error) {
+            const profile: Profile = {
+              name: profiles.name,
+              class: profiles.class,
+              division: profiles.division,
+              dob: profiles.dob,
+              phone: profiles.phone,
+              image: profiles.image || undefined,
+            };
+            setForm(profile);
+            setImagePreview(profile.image || undefined);
+            // Also save to localStorage for backward compatibility
+            saveProfileLocally(profile);
+            return;
+          }
+        }
+      }
+
+      // Fallback to localStorage if not authenticated or no Supabase data
+      const profiles = getStoredProfiles();
+      if (profiles.length > 0) {
+        const last = profiles[profiles.length - 1];
+        setForm(last);
+        setImagePreview(last.image || undefined);
+      }
+    };
+
+    loadProfile();
+  }, [isAuthenticated]);
+
+  // Check name availability
   useEffect(() => {
     if (!form.name.trim()) {
       setNameAvailable(null);
       return;
     }
-    const profiles = getStoredProfiles();
-    // Allow the in-use name if it's the same as the current user's own profile
-    const isTaken = profiles.some(
-      (p) => p.name.trim().toLowerCase() === form.name.trim().toLowerCase() &&
-      p.phone !== form.phone // only disallow if it's a different phone number
-    );
-    setNameAvailable(!isTaken);
-  }, [form.name, form.phone]);
+
+    const checkNameAvailability = async () => {
+      if (isAuthenticated) {
+        // Check in Supabase
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('name, user_id')
+            .ilike('name', form.name.trim());
+
+          const isTaken = profiles?.some(
+            (p) => p.name.trim().toLowerCase() === form.name.trim().toLowerCase() &&
+            p.user_id !== session.user.id
+          );
+          setNameAvailable(!isTaken);
+          return;
+        }
+      }
+
+      // Fallback to localStorage check
+      const profiles = getStoredProfiles();
+      const isTaken = profiles.some(
+        (p) => p.name.trim().toLowerCase() === form.name.trim().toLowerCase() &&
+        p.phone !== form.phone
+      );
+      setNameAvailable(!isTaken);
+    };
+
+    const timeoutId = setTimeout(checkNameAvailability, 300);
+    return () => clearTimeout(timeoutId);
+  }, [form.name, form.phone, isAuthenticated]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  // Handle image upload and preview as base64
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    // Only JPEG and PNG images
+    
     if (!/^image\/(jpeg|png)$/.test(file.type)) {
-      alert("Only JPEG and PNG images are allowed.");
+      toast({
+        title: "Invalid file type",
+        description: "Only JPEG and PNG images are allowed.",
+        variant: "destructive",
+      });
       return;
     }
+    
     const reader = new FileReader();
     reader.onloadend = () => {
       setImagePreview(reader.result as string);
@@ -104,13 +185,58 @@ const Profile = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    saveProfile(form);
-    alert("Profile saved (on this device only). Teachers can now see your profile!");
+    setIsLoading(true);
+
+    try {
+      if (isAuthenticated) {
+        // Save to Supabase
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const { error } = await supabase
+            .from('profiles')
+            .upsert({
+              user_id: session.user.id,
+              name: form.name,
+              class: form.class,
+              division: form.division,
+              dob: form.dob,
+              phone: form.phone,
+              image: form.image || null,
+            });
+
+          if (error) {
+            throw error;
+          }
+
+          toast({
+            title: "Profile saved successfully!",
+            description: "Your profile is now synced across all devices.",
+          });
+        }
+      } else {
+        // Save to localStorage only
+        toast({
+          title: "Profile saved locally",
+          description: "Sign in to sync your profile across devices.",
+        });
+      }
+
+      // Always save to localStorage for backward compatibility
+      saveProfileLocally(form);
+    } catch (error: any) {
+      console.error('Error saving profile:', error);
+      toast({
+        title: "Failed to save profile",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // Initials generator
   function getInitials(name: string) {
     return name
       .split(" ")
@@ -124,6 +250,11 @@ const Profile = () => {
       <Card className="w-full max-w-sm shadow-lg">
         <CardHeader>
           <CardTitle className="text-2xl text-blue-800 text-center">Profile</CardTitle>
+          {!isAuthenticated && (
+            <p className="text-sm text-center text-gray-600">
+              Sign in to sync your profile across devices
+            </p>
+          )}
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={handleSubmit} autoComplete="off">
@@ -237,9 +368,9 @@ const Profile = () => {
             <Button 
               className="w-full mt-2" 
               type="submit"
-              disabled={nameAvailable === false}
+              disabled={nameAvailable === false || isLoading}
             >
-              Update Profile
+              {isLoading ? "Saving..." : "Update Profile"}
             </Button>
           </form>
         </CardContent>

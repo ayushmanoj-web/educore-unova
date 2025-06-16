@@ -1,8 +1,10 @@
+
 import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { User, Phone, Eye, EyeOff } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 type TeachersAccessModalProps = {
   open: boolean;
@@ -34,12 +36,59 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
   const [error, setError] = useState("");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [showPassword, setShowPassword] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Check authentication status
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session);
+    };
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsAuthenticated(!!session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (showProfiles) {
-      setProfiles(getStoredProfiles());
+      const loadProfiles = async () => {
+        let allProfiles: Profile[] = [];
+
+        // If authenticated, fetch from Supabase first
+        if (isAuthenticated) {
+          const { data: supabaseProfiles, error } = await supabase
+            .from('profiles')
+            .select('*');
+
+          if (supabaseProfiles && !error) {
+            const formattedSupabaseProfiles: Profile[] = supabaseProfiles.map(profile => ({
+              name: profile.name,
+              class: profile.class,
+              division: profile.division,
+              dob: profile.dob,
+              phone: profile.phone,
+            }));
+            allProfiles = [...formattedSupabaseProfiles];
+          }
+        }
+
+        // Also get localStorage profiles for backward compatibility
+        const localProfiles = getStoredProfiles();
+        
+        // Merge profiles, avoiding duplicates by phone number
+        const phoneNumbers = new Set(allProfiles.map(p => p.phone));
+        const uniqueLocalProfiles = localProfiles.filter(p => !phoneNumbers.has(p.phone));
+        
+        setProfiles([...allProfiles, ...uniqueLocalProfiles]);
+      };
+
+      loadProfiles();
     }
-  }, [showProfiles, open]);
+  }, [showProfiles, open, isAuthenticated]);
 
   // Reset state when closing
   const handleOpenChange = (isOpen: boolean) => {
@@ -57,7 +106,6 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
     if (password === "password") {
       setShowProfiles(true);
       setError("");
-      setProfiles(getStoredProfiles());
     } else {
       setError("Incorrect password. Try again.");
       setShowProfiles(false);
@@ -107,32 +155,39 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
             {profiles.length === 0 ? (
               <span className="text-center text-sm text-slate-500">No student profiles available yet.</span>
             ) : (
-              profiles.map((student, idx) => (
-                <div key={student.phone + idx} className="flex items-center gap-3 border rounded-xl px-4 py-3 shadow bg-slate-50">
-                  <User className="text-blue-700" />
-                  <div className="flex flex-col flex-1">
-                    <span className="font-semibold text-blue-900">{student.name}</span>
-                    <span className="text-sm text-slate-700">
-                      Class: <b>{student.class}</b> | Division: <b>{student.division}</b>
-                    </span>
-                    <span className="text-sm text-gray-600">
-                      DOB: {student.dob}
-                    </span>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-sm text-gray-600">
-                        Phone: {student.phone}
+              <>
+                {isAuthenticated && (
+                  <div className="text-center text-xs text-green-600 mb-2">
+                    Showing profiles from all devices (synced)
+                  </div>
+                )}
+                {profiles.map((student, idx) => (
+                  <div key={student.phone + idx} className="flex items-center gap-3 border rounded-xl px-4 py-3 shadow bg-slate-50">
+                    <User className="text-blue-700" />
+                    <div className="flex flex-col flex-1">
+                      <span className="font-semibold text-blue-900">{student.name}</span>
+                      <span className="text-sm text-slate-700">
+                        Class: <b>{student.class}</b> | Division: <b>{student.division}</b>
                       </span>
-                      <a
-                        className="ml-2 px-2 py-1 rounded text-white bg-blue-600 hover:bg-blue-700 text-xs flex items-center gap-1"
-                        href={`tel:${student.phone}`}
-                        title={`Call ${student.name}`}
-                      >
-                        <Phone size={16} /> Call
-                      </a>
+                      <span className="text-sm text-gray-600">
+                        DOB: {student.dob}
+                      </span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-sm text-gray-600">
+                          Phone: {student.phone}
+                        </span>
+                        <a
+                          className="ml-2 px-2 py-1 rounded text-white bg-blue-600 hover:bg-blue-700 text-xs flex items-center gap-1"
+                          href={`tel:${student.phone}`}
+                          title={`Call ${student.name}`}
+                        >
+                          <Phone size={16} /> Call
+                        </a>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                ))}
+              </>
             )}
           </div>
         )}

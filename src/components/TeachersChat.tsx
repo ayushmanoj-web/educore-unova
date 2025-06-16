@@ -36,6 +36,7 @@ function getStoredProfiles(): Profile[] {
     return [];
   }
 }
+
 function getCurrentUser(): Profile | undefined {
   const profiles = getStoredProfiles();
   if (profiles.length === 0) return undefined;
@@ -61,7 +62,55 @@ const TeachersChat: React.FC = () => {
   const msgEndRef = useRef<HTMLDivElement | null>(null);
 
   const [profiles, setProfiles] = useState<Profile[]>(() => getStoredProfiles());
+  const [supabaseProfiles, setSupabaseProfiles] = useState<Profile[]>([]);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const currentUser = getCurrentUser();
+
+  // Check authentication status
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session);
+    };
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsAuthenticated(!!session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Fetch profiles from Supabase
+  useEffect(() => {
+    const fetchSupabaseProfiles = async () => {
+      if (!isAuthenticated) return;
+
+      const { data: profilesData, error } = await supabase
+        .from('profiles')
+        .select('*');
+
+      if (error) {
+        console.error('Error fetching profiles:', error);
+        return;
+      }
+
+      if (profilesData) {
+        const formattedProfiles: Profile[] = profilesData.map(profile => ({
+          name: profile.name,
+          class: profile.class,
+          division: profile.division,
+          dob: profile.dob,
+          phone: profile.phone,
+          image: profile.image || undefined,
+        }));
+        setSupabaseProfiles(formattedProfiles);
+        console.log("Loaded profiles from Supabase:", formattedProfiles);
+      }
+    };
+
+    fetchSupabaseProfiles();
+  }, [isAuthenticated]);
 
   // Log all loaded profiles when loaded or updated
   useEffect(() => {
@@ -226,6 +275,15 @@ const TeachersChat: React.FC = () => {
   };
 
   function getProfile(phone: string): Profile | undefined {
+    // First check Supabase profiles if authenticated
+    if (isAuthenticated && supabaseProfiles.length > 0) {
+      const supabaseProfile = supabaseProfiles.find((p) => p.phone === phone);
+      if (supabaseProfile) {
+        return supabaseProfile;
+      }
+    }
+    
+    // Fallback to localStorage profiles
     return profiles.find((p) => p.phone === phone);
   }
 
