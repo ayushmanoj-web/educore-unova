@@ -33,6 +33,42 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          recipient_id: string | null
+          role: string
+          sender_id: string | null
+          timestamp: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          recipient_id?: string | null
+          role?: string
+          sender_id?: string | null
+          timestamp?: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          recipient_id?: string | null
+          role?: string
+          sender_id?: string | null
+          timestamp?: string
+          title?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           class: string
