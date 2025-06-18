@@ -13,6 +13,7 @@ import Courses from "./pages/Courses";
 import Textbooks from "./pages/Textbooks";
 import BottomNav from "./components/BottomNav";
 import FloatingChatButton from "@/components/FloatingChatButton";
+import AIBot from "@/components/AIBot";
 import Timetable from "./pages/Timetable";
 
 const queryClient = new QueryClient();
@@ -26,7 +27,6 @@ const App = () => (
         <div className="pb-16 min-h-screen relative">
           <Routes>
             <Route path="/" element={<Index />} />
-            {/* Removed the /home route since Home page no longer exists */}
             <Route path="/courses" element={<Courses />} />
             <Route path="/downloads" element={<Downloads />} />
             <Route path="/notifications" element={<Notifications />} />
@@ -37,6 +37,7 @@ const App = () => (
           </Routes>
           <BottomNav />
           <FloatingChatButton />
+          <AIBot />
         </div>
       </BrowserRouter>
     </TooltipProvider>
@@ -44,4 +45,3 @@ const App = () => (
 );
 
 export default App;
-
