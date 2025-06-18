@@ -17,33 +17,9 @@ type Notification = {
 const Notifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setIsAuthenticated(!!session);
-      
-      if (session) {
-        fetchNotifications();
-      } else {
-        setIsLoading(false);
-      }
-    };
-
-    checkAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setIsAuthenticated(!!session);
-      if (session) {
-        fetchNotifications();
-      } else {
-        setNotifications([]);
-        setIsLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    fetchNotifications();
   }, []);
 
   const fetchNotifications = async () => {
@@ -157,22 +133,6 @@ const Notifications = () => {
       return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
     }
   };
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen w-full px-8 py-10 bg-gradient-to-tr from-slate-50 via-white to-blue-50 animate-fade-in">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex flex-col items-center justify-center h-full pt-12">
-            <Bell className="w-16 h-16 text-slate-400 mb-4" />
-            <h1 className="text-3xl font-bold mb-2 text-blue-800">Notifications</h1>
-            <p className="text-lg text-slate-700 text-center">
-              Please sign in to view your notifications.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (isLoading) {
     return (

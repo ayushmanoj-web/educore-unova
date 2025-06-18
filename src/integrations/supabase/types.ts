@@ -9,6 +9,33 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      chat_messages: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          sender_image: string | null
+          sender_name: string
+          timestamp: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          sender_image?: string | null
+          sender_name: string
+          timestamp?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          sender_image?: string | null
+          sender_name?: string
+          timestamp?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           audio_url: string | null

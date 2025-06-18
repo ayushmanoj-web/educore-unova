@@ -13,6 +13,7 @@ import Courses from "./pages/Courses";
 import Textbooks from "./pages/Textbooks";
 import BottomNav from "./components/BottomNav";
 import Timetable from "./pages/Timetable";
+import LiveChatPage from "./pages/LiveChatPage";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/profile" element={<Profile />} />
             <Route path="/textbooks" element={<Textbooks />} />
             <Route path="/timetable" element={<Timetable />} />
+            <Route path="/chat" element={<LiveChatPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <BottomNav />

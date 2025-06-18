@@ -41,48 +41,30 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
   const [error, setError] = useState("");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [showPassword, setShowPassword] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState("");
   const [selectedAction, setSelectedAction] = useState<"profiles" | "notifications" | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-
-  // Check authentication status
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setIsAuthenticated(!!session);
-    };
-    checkAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setIsAuthenticated(!!session);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   useEffect(() => {
     if (viewMode === "profiles") {
       const loadProfiles = async () => {
         let allProfiles: Profile[] = [];
 
-        // If authenticated, fetch from Supabase first
-        if (isAuthenticated) {
-          const { data: supabaseProfiles, error } = await supabase
-            .from('profiles')
-            .select('*');
+        // Get Supabase profiles
+        const { data: supabaseProfiles, error } = await supabase
+          .from('profiles')
+          .select('*');
 
-          if (supabaseProfiles && !error) {
-            const formattedSupabaseProfiles: Profile[] = supabaseProfiles.map(profile => ({
-              name: profile.name,
-              class: profile.class,
-              division: profile.division,
-              dob: profile.dob,
-              phone: profile.phone,
-              image: profile.image || undefined,
-            }));
-            allProfiles = [...formattedSupabaseProfiles];
-          }
+        if (supabaseProfiles && !error) {
+          const formattedSupabaseProfiles: Profile[] = supabaseProfiles.map(profile => ({
+            name: profile.name,
+            class: profile.class,
+            division: profile.division,
+            dob: profile.dob,
+            phone: profile.phone,
+            image: profile.image || undefined,
+          }));
+          allProfiles = [...formattedSupabaseProfiles];
         }
 
         // Also get localStorage profiles for backward compatibility
@@ -97,7 +79,7 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
 
       loadProfiles();
     }
-  }, [viewMode, open, isAuthenticated]);
+  }, [viewMode, open]);
 
   // Reset state when closing
   const handleOpenChange = (isOpen: boolean) => {
@@ -142,58 +124,19 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
       return;
     }
 
-    if (!isAuthenticated) {
-      toast({
-        title: "Authentication Required",
-        description: "Please sign in to send notifications.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsLoading(true);
 
     try {
-      // Get current user (teacher)
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error("User not authenticated");
-      }
-
-      // Get all student profiles to send notifications to
-      const { data: supabaseProfiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('user_id, name');
-
-      if (profilesError) {
-        throw profilesError;
-      }
-
-      const studentProfiles = supabaseProfiles || [];
-
-      // Create notifications for each student
-      const notifications = studentProfiles.map(profile => ({
-        title: "New Announcement",
-        message: notificationMessage,
-        sender_id: user.id,
-        recipient_id: profile.user_id,
-        role: "student"
-      }));
-
-      if (notifications.length === 0) {
-        toast({
-          title: "No Recipients",
-          description: "No student profiles found to send notifications to.",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      // Insert all notifications
+      // Create a public notification that everyone can see
       const { error: insertError } = await supabase
         .from('notifications')
-        .insert(notifications);
+        .insert({
+          title: "New Announcement",
+          message: notificationMessage,
+          sender_id: null, // No authentication required
+          recipient_id: null, // Public notification
+          role: "student"
+        });
 
       if (insertError) {
         throw insertError;
@@ -201,7 +144,7 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
 
       toast({
         title: "Notification sent!",
-        description: `Message sent to ${notifications.length} students successfully.`,
+        description: "Message sent to all students successfully.",
       });
       
       setNotificationMessage("");
@@ -329,11 +272,9 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
                 <span className="text-center text-sm text-slate-500">No student profiles available yet.</span>
               ) : (
                 <>
-                  {isAuthenticated && (
-                    <div className="text-center text-xs text-green-600 mb-2">
-                      Showing profiles from all devices (synced)
-                    </div>
-                  )}
+                  <div className="text-center text-xs text-green-600 mb-2">
+                    Showing profiles from all devices
+                  </div>
                   {profiles.map((student, idx) => (
                     <div key={student.phone + idx} className="flex items-center gap-3 border rounded-xl px-4 py-3 shadow bg-slate-50">
                       <Avatar className="w-12 h-12">
@@ -402,11 +343,9 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
                 <Bell size={16} />
                 {isLoading ? "Sending..." : "Send Notification to All Students"}
               </Button>
-              {!isAuthenticated && (
-                <div className="text-center text-sm text-orange-600">
-                  Note: You need to be signed in to send notifications.
-                </div>
-              )}
+              <div className="text-center text-sm text-green-600">
+                Note: Notifications are now public and don't require authentication.
+              </div>
             </div>
           </div>
         )}

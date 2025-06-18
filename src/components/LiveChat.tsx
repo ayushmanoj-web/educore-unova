@@ -1,0 +1,288 @@
+
+import { useState, useEffect, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Send, MessageCircle, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { toast } from "@/components/ui/use-toast";
+
+type ChatMessage = {
+  id: string;
+  message: string;
+  sender_name: string;
+  sender_image: string | null;
+  timestamp: string;
+};
+
+type Profile = {
+  name: string;
+  image: string | null;
+  phone: string;
+};
+
+const LiveChat = () => {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [senderName, setSenderName] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [showProfiles, setShowProfiles] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetchMessages();
+    fetchProfiles();
+    setupRealtime();
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const fetchMessages = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .order('timestamp', { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+
+      setMessages(data || []);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load chat messages.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchProfiles = async () => {
+    try {
+      // Get stored profiles from localStorage
+      const storedProfiles = localStorage.getItem("student-profiles");
+      let localProfiles: Profile[] = [];
+      
+      if (storedProfiles) {
+        const parsed = JSON.parse(storedProfiles);
+        localProfiles = parsed.map((p: any) => ({
+          name: p.name,
+          image: p.image || null,
+          phone: p.phone
+        }));
+      }
+
+      // Get profiles from Supabase
+      const { data: supabaseProfiles, error } = await supabase
+        .from('profiles')
+        .select('name, image, phone');
+
+      let allProfiles = [...localProfiles];
+      
+      if (supabaseProfiles && !error) {
+        const phoneNumbers = new Set(localProfiles.map(p => p.phone));
+        const uniqueSupabaseProfiles = supabaseProfiles.filter(p => !phoneNumbers.has(p.phone));
+        allProfiles = [...allProfiles, ...uniqueSupabaseProfiles];
+      }
+
+      setProfiles(allProfiles);
+    } catch (error) {
+      console.error('Error fetching profiles:', error);
+    }
+  };
+
+  const setupRealtime = () => {
+    const channel = supabase
+      .channel('chat_messages')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+        },
+        (payload) => {
+          setMessages(prev => [...prev, payload.new as ChatMessage]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
+
+  const sendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newMessage.trim() || !senderName.trim()) {
+      toast({
+        title: "Missing information",
+        description: "Please enter your name and a message.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('chat_messages')
+        .insert({
+          message: newMessage.trim(),
+          sender_name: senderName.trim(),
+          sender_image: null, // We could add image selection later
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      setNewMessage("");
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0]?.toUpperCase())
+      .join("")
+      .slice(0, 2);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-[600px] bg-white rounded-lg shadow-lg border">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b bg-blue-50">
+        <div className="flex items-center gap-2">
+          <MessageCircle className="w-5 h-5 text-blue-600" />
+          <h3 className="font-semibold text-blue-800">Live Chat</h3>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowProfiles(!showProfiles)}
+          className="flex items-center gap-1"
+        >
+          <Users className="w-4 h-4" />
+          Profiles ({profiles.length})
+        </Button>
+      </div>
+
+      {/* Profiles Panel */}
+      {showProfiles && (
+        <div className="p-4 border-b bg-gray-50 max-h-32 overflow-y-auto">
+          <div className="grid grid-cols-2 gap-2">
+            {profiles.map((profile, index) => (
+              <div key={`${profile.phone}-${index}`} className="flex items-center gap-2 text-sm">
+                <Avatar className="w-6 h-6">
+                  {profile.image ? (
+                    <AvatarImage src={profile.image} alt={profile.name} />
+                  ) : (
+                    <AvatarFallback className="text-xs bg-blue-100 text-blue-800">
+                      {getInitials(profile.name)}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <span className="truncate">{profile.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Messages */}
+      <div className="flex-1 p-4 overflow-y-auto space-y-3">
+        {messages.length === 0 ? (
+          <div className="text-center text-gray-500 py-8">
+            <MessageCircle className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+            <p>No messages yet. Start the conversation!</p>
+          </div>
+        ) : (
+          messages.map((message) => (
+            <div key={message.id} className="flex items-start gap-3">
+              <Avatar className="w-8 h-8">
+                {message.sender_image ? (
+                  <AvatarImage src={message.sender_image} alt={message.sender_name} />
+                ) : (
+                  <AvatarFallback className="text-xs bg-blue-100 text-blue-800">
+                    {getInitials(message.sender_name)}
+                  </AvatarFallback>
+                )}
+              </Avatar>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-medium text-sm text-gray-900">
+                    {message.sender_name}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {formatTimestamp(message.timestamp)}
+                  </span>
+                </div>
+                <div className="bg-gray-100 rounded-lg px-3 py-2 text-sm">
+                  {message.message}
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Message Input */}
+      <form onSubmit={sendMessage} className="p-4 border-t bg-gray-50">
+        <div className="flex gap-2 mb-2">
+          <Input
+            value={senderName}
+            onChange={(e) => setSenderName(e.target.value)}
+            placeholder="Your name..."
+            className="flex-1"
+          />
+        </div>
+        <div className="flex gap-2">
+          <Input
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder="Type your message..."
+            className="flex-1"
+          />
+          <Button type="submit" size="sm">
+            <Send className="w-4 h-4" />
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+export default LiveChat;
