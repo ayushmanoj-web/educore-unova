@@ -12,8 +12,6 @@ import Profile from "./pages/Profile";
 import Courses from "./pages/Courses";
 import Textbooks from "./pages/Textbooks";
 import BottomNav from "./components/BottomNav";
-import FloatingChatButton from "@/components/FloatingChatButton";
-import AIBot from "@/components/AIBot";
 import Timetable from "./pages/Timetable";
 
 const queryClient = new QueryClient();
@@ -36,8 +34,6 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
           <BottomNav />
-          <FloatingChatButton />
-          <AIBot />
         </div>
       </BrowserRouter>
     </TooltipProvider>
