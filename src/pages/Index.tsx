@@ -1,6 +1,7 @@
 
 import DashboardHero from "@/components/DashboardHero";
 import CourseList from "@/components/CourseList";
+import FloatingChatButton from "@/components/FloatingChatButton";
 
 const Index = () => {
   return (
@@ -13,6 +14,7 @@ const Index = () => {
           </section>
         </div>
       </main>
+      <FloatingChatButton />
     </div>
   );
 };
