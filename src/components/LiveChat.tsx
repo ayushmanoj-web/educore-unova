@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Send, MessageCircle, Users } from "lucide-react";
@@ -103,8 +102,9 @@ const LiveChat = () => {
   };
 
   const setupRealtime = () => {
-    const channel = supabase
-      .channel('chat_messages')
+    // Set up real-time subscription for chat messages
+    const messagesChannel = supabase
+      .channel('chat_messages_realtime')
       .on(
         'postgres_changes',
         {
@@ -113,13 +113,33 @@ const LiveChat = () => {
           table: 'chat_messages',
         },
         (payload) => {
+          console.log('New message received:', payload.new);
           setMessages(prev => [...prev, payload.new as ChatMessage]);
         }
       )
       .subscribe();
 
+    // Set up real-time subscription for profiles
+    const profilesChannel = supabase
+      .channel('profiles_realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'profiles',
+        },
+        (payload) => {
+          console.log('Profile change detected:', payload);
+          // Refresh profiles when any profile changes
+          fetchProfiles();
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(messagesChannel);
+      supabase.removeChannel(profilesChannel);
     };
   };
 
@@ -149,6 +169,7 @@ const LiveChat = () => {
       }
 
       setNewMessage("");
+      console.log('Message sent successfully');
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
@@ -187,6 +208,9 @@ const LiveChat = () => {
         <div className="flex items-center gap-2">
           <MessageCircle className="w-5 h-5 text-blue-600" />
           <h3 className="font-semibold text-blue-800">Live Chat</h3>
+          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+            Real-time enabled
+          </span>
         </div>
         <Button
           variant="outline"
