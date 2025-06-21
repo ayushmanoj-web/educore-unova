@@ -1,4 +1,3 @@
-
 import CourseCard from "./CourseCard";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -25,10 +24,7 @@ const CourseList = () => {
           <Button
             className="mt-auto w-full bg-blue-600 text-white text-base font-semibold py-3 rounded-lg hover:bg-blue-700 transition"
             size="lg"
-            onClick={() => {
-              // TODO: Navigate to leave submission page or open modal
-              console.log("Submit Leave clicked");
-            }}
+            onClick={() => navigate("/leave")}
           >
             Submit Leave
           </Button>
