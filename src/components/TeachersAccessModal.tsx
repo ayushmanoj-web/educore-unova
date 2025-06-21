@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
@@ -22,9 +21,14 @@ type Profile = {
   image?: string;
 };
 
-type ViewMode = "menu" | "password" | "profiles" | "notifications";
+type ViewMode = "login" | "menu" | "profiles" | "notifications";
 
 const LOCAL_STORAGE_KEY = "student-profiles";
+const TEACHER_LOGIN_KEY = "teacher-logged-in";
+
+// Hardcoded credentials
+const TEACHER_USERNAME = "devadar";
+const TEACHER_PASSWORD = "dghsstanur";
 
 const getStoredProfiles = (): Profile[] => {
   try {
@@ -35,15 +39,39 @@ const getStoredProfiles = (): Profile[] => {
   }
 };
 
+const isTeacherLoggedIn = (): boolean => {
+  return localStorage.getItem(TEACHER_LOGIN_KEY) === "true";
+};
+
+const setTeacherLoggedIn = (loggedIn: boolean) => {
+  if (loggedIn) {
+    localStorage.setItem(TEACHER_LOGIN_KEY, "true");
+  } else {
+    localStorage.removeItem(TEACHER_LOGIN_KEY);
+  }
+};
+
 const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) => {
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [viewMode, setViewMode] = useState<ViewMode>("menu");
+  const [viewMode, setViewMode] = useState<ViewMode>("login");
   const [error, setError] = useState("");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState("");
   const [selectedAction, setSelectedAction] = useState<"profiles" | "notifications" | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      // Check if teacher is already logged in
+      if (isTeacherLoggedIn()) {
+        setViewMode("menu");
+      } else {
+        setViewMode("login");
+      }
+    }
+  }, [open]);
 
   useEffect(() => {
     if (viewMode === "profiles") {
@@ -85,32 +113,40 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
   const handleOpenChange = (isOpen: boolean) => {
     onOpenChange(isOpen);
     if (!isOpen) {
+      setUsername("");
       setPassword("");
-      setViewMode("menu");
       setError("");
       setShowPassword(false);
       setNotificationMessage("");
       setSelectedAction(null);
       setIsLoading(false);
+      // Don't reset viewMode here - keep login state
+    }
+  };
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (username === TEACHER_USERNAME && password === TEACHER_PASSWORD) {
+      setTeacherLoggedIn(true);
+      setViewMode("menu");
+      setError("");
+      setUsername("");
+      setPassword("");
+      toast({
+        title: "Login successful",
+        description: "Welcome, teacher!",
+      });
+    } else {
+      setError("Invalid username or password. Please try again.");
     }
   };
 
   const handleActionSelect = (action: "profiles" | "notifications") => {
     setSelectedAction(action);
-    setViewMode("password");
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password === "password") {
-      if (selectedAction === "profiles") {
-        setViewMode("profiles");
-      } else if (selectedAction === "notifications") {
-        setViewMode("notifications");
-      }
-      setError("");
-    } else {
-      setError("Incorrect password. Try again.");
+    if (action === "profiles") {
+      setViewMode("profiles");
+    } else if (action === "notifications") {
+      setViewMode("notifications");
     }
   };
 
@@ -163,17 +199,25 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
 
   const handleBackToMenu = () => {
     setViewMode("menu");
-    setPassword("");
     setError("");
     setSelectedAction(null);
   };
 
+  const handleLogout = () => {
+    setTeacherLoggedIn(false);
+    setViewMode("login");
+    toast({
+      title: "Logged out",
+      description: "You have been logged out successfully.",
+    });
+  };
+
   const getTitle = () => {
     switch (viewMode) {
+      case "login":
+        return "Teacher Login";
       case "menu":
         return "For Teachers Only";
-      case "password":
-        return selectedAction === "profiles" ? "Access Student Profiles" : "Send Notifications";
       case "profiles":
         return "All Students' Profiles";
       case "notifications":
@@ -198,37 +242,25 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
           <SheetTitle className="text-center">{getTitle()}</SheetTitle>
         </SheetHeader>
 
-        {viewMode === "menu" && (
-          <div className="flex flex-col gap-4 mt-4">
-            <Button 
-              onClick={() => handleActionSelect("profiles")}
-              className="w-full flex items-center justify-center gap-2"
-              variant="outline"
-            >
-              <Users size={20} />
-              View All Student Profiles
-            </Button>
-            <Button 
-              onClick={() => handleActionSelect("notifications")}
-              className="w-full flex items-center justify-center gap-2"
-              variant="outline"
-            >
-              <Bell size={20} />
-              Send Notifications
-            </Button>
-          </div>
-        )}
-
-        {viewMode === "password" && (
-          <form className="flex flex-col gap-4 mt-4" onSubmit={handleSubmit}>
-            <label htmlFor="teacher-pass" className="font-medium text-base text-slate-700 text-center">
-              Password
+        {viewMode === "login" && (
+          <form className="flex flex-col gap-4 mt-4" onSubmit={handleLogin}>
+            <label htmlFor="teacher-username" className="font-medium text-base text-slate-700 text-center">
+              Teacher Login
             </label>
+            <Input
+              id="teacher-username"
+              type="text"
+              autoComplete="username"
+              placeholder="Username"
+              className="text-lg"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+            />
             <div className="relative">
               <Input
-                id="teacher-pass"
+                id="teacher-password"
                 type={showPassword ? "text" : "password"}
-                autoComplete="off"
+                autoComplete="current-password"
                 placeholder="Password"
                 className="text-lg pr-12"
                 value={password}
@@ -247,15 +279,37 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
             {error && (
               <span className="text-red-600 text-xs text-center">{error}</span>
             )}
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={handleBackToMenu} className="flex-1">
-                Back
-              </Button>
-              <Button type="submit" className="flex-1">
-                Unlock
+            <Button type="submit" className="w-full">
+              Login
+            </Button>
+          </form>
+        )}
+
+        {viewMode === "menu" && (
+          <div className="flex flex-col gap-4 mt-4">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm text-green-600">Logged in as teacher</span>
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                Logout
               </Button>
             </div>
-          </form>
+            <Button 
+              onClick={() => handleActionSelect("profiles")}
+              className="w-full flex items-center justify-center gap-2"
+              variant="outline"
+            >
+              <Users size={20} />
+              View All Student Profiles
+            </Button>
+            <Button 
+              onClick={() => handleActionSelect("notifications")}
+              className="w-full flex items-center justify-center gap-2"
+              variant="outline"
+            >
+              <Bell size={20} />
+              Send Notifications
+            </Button>
+          </div>
         )}
 
         {viewMode === "profiles" && (
