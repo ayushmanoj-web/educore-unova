@@ -63,7 +63,6 @@ const AIBot: React.FC = () => {
           <iframe 
             id="JotFormIFrame-01977e78685872f9bf17c1032105b079c07e" 
             title="EduBot: Virtual Tutor"
-            onLoad={() => window.parent.scrollTo(0,0)} 
             allowTransparency={true}
             allow="geolocation; microphone; camera; fullscreen"
             src="https://agent.jotform.com/01977e78685872f9bf17c1032105b079c07e/voice?embedMode=iframe&background=1&shadow=1"
