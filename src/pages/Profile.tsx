@@ -1,4 +1,3 @@
-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -49,69 +48,42 @@ const Profile = () => {
   });
 
   const [nameAvailable, setNameAvailable] = useState<null | boolean>(null);
+  const [phoneAvailable, setPhoneAvailable] = useState<null | boolean>(null);
   const [imagePreview, setImagePreview] = useState<string | undefined>();
   const [imageFileName, setImageFileName] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [existingProfileId, setExistingProfileId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Check authentication status
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setIsAuthenticated(!!session);
-    };
-    checkAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setIsAuthenticated(!!session);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   // Load profile data on mount
   useEffect(() => {
     const loadProfile = async () => {
-      if (isAuthenticated) {
-        // If authenticated, try to load from Supabase first
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          const { data: profiles, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .single();
-
-          if (profiles && !error) {
-            const profile: Profile = {
-              name: profiles.name,
-              class: profiles.class,
-              division: profiles.division,
-              dob: profiles.dob,
-              phone: profiles.phone,
-              image: profiles.image || undefined,
-            };
-            setForm(profile);
-            setImagePreview(profile.image || undefined);
-            // Also save to localStorage for backward compatibility
-            saveProfileLocally(profile);
-            return;
-          }
-        }
-      }
-
-      // Fallback to localStorage if not authenticated or no Supabase data
+      // First try to load from localStorage to get the current user's profile
       const profiles = getStoredProfiles();
       if (profiles.length > 0) {
         const last = profiles[profiles.length - 1];
         setForm(last);
         setImagePreview(last.image || undefined);
+        
+        // Try to find this profile in Supabase and get its ID
+        try {
+          const { data: supabaseProfile } = await supabase
+            .from('public_profiles')
+            .select('id')
+            .eq('phone', last.phone)
+            .single();
+          
+          if (supabaseProfile) {
+            setExistingProfileId(supabaseProfile.id);
+          }
+        } catch (error) {
+          console.log('Profile not found in Supabase, will create new one');
+        }
       }
     };
 
     loadProfile();
-  }, [isAuthenticated]);
+  }, []);
 
   // Check name availability
   useEffect(() => {
@@ -121,36 +93,64 @@ const Profile = () => {
     }
 
     const checkNameAvailability = async () => {
-      if (isAuthenticated) {
-        // Check in Supabase
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          const { data: profiles } = await supabase
-            .from('profiles')
-            .select('name, user_id')
-            .ilike('name', form.name.trim());
+      try {
+        // Check in Supabase public_profiles
+        const { data: profiles } = await supabase
+          .from('public_profiles')
+          .select('name, phone')
+          .ilike('name', form.name.trim());
 
-          const isTaken = profiles?.some(
-            (p) => p.name.trim().toLowerCase() === form.name.trim().toLowerCase() &&
-            p.user_id !== session.user.id
-          );
-          setNameAvailable(!isTaken);
-          return;
-        }
+        const isTaken = profiles?.some(
+          (p) => p.name.trim().toLowerCase() === form.name.trim().toLowerCase() &&
+          p.phone !== form.phone
+        );
+        setNameAvailable(!isTaken);
+      } catch (error) {
+        console.error('Error checking name availability:', error);
+        // Fallback to localStorage check
+        const profiles = getStoredProfiles();
+        const isTaken = profiles.some(
+          (p) => p.name.trim().toLowerCase() === form.name.trim().toLowerCase() &&
+          p.phone !== form.phone
+        );
+        setNameAvailable(!isTaken);
       }
-
-      // Fallback to localStorage check
-      const profiles = getStoredProfiles();
-      const isTaken = profiles.some(
-        (p) => p.name.trim().toLowerCase() === form.name.trim().toLowerCase() &&
-        p.phone !== form.phone
-      );
-      setNameAvailable(!isTaken);
     };
 
     const timeoutId = setTimeout(checkNameAvailability, 300);
     return () => clearTimeout(timeoutId);
-  }, [form.name, form.phone, isAuthenticated]);
+  }, [form.name, form.phone]);
+
+  // Check phone availability
+  useEffect(() => {
+    if (!form.phone.trim()) {
+      setPhoneAvailable(null);
+      return;
+    }
+
+    const checkPhoneAvailability = async () => {
+      try {
+        // Check in Supabase public_profiles
+        const { data: profiles } = await supabase
+          .from('public_profiles')
+          .select('phone')
+          .eq('phone', form.phone.trim());
+
+        // If we're updating an existing profile, exclude it from the check
+        const isTaken = profiles?.some(
+          (p) => p.phone === form.phone.trim()
+        ) && !existingProfileId;
+        
+        setPhoneAvailable(!isTaken);
+      } catch (error) {
+        console.error('Error checking phone availability:', error);
+        setPhoneAvailable(true); // Assume available if check fails
+      }
+    };
+
+    const timeoutId = setTimeout(checkPhoneAvailability, 300);
+    return () => clearTimeout(timeoutId);
+  }, [form.phone, existingProfileId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -190,46 +190,65 @@ const Profile = () => {
     setIsLoading(true);
 
     try {
-      if (isAuthenticated) {
-        // Save to Supabase
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          const { error } = await supabase
-            .from('profiles')
-            .upsert({
-              user_id: session.user.id,
-              name: form.name,
-              class: form.class,
-              division: form.division,
-              dob: form.dob,
-              phone: form.phone,
-              image: form.image || null,
-            });
+      // Save to Supabase public_profiles (no authentication required)
+      if (existingProfileId) {
+        // Update existing profile
+        const { error } = await supabase
+          .from('public_profiles')
+          .update({
+            name: form.name,
+            class: form.class,
+            division: form.division,
+            dob: form.dob,
+            phone: form.phone,
+            image: form.image || null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingProfileId);
 
-          if (error) {
-            throw error;
-          }
-
-          toast({
-            title: "Profile saved successfully!",
-            description: "Your profile is now synced across all devices.",
-          });
+        if (error) {
+          throw error;
         }
       } else {
-        // Save to localStorage only
-        toast({
-          title: "Profile saved locally",
-          description: "Sign in to sync your profile across devices.",
-        });
+        // Create new profile
+        const { data, error } = await supabase
+          .from('public_profiles')
+          .insert({
+            name: form.name,
+            class: form.class,
+            division: form.division,
+            dob: form.dob,
+            phone: form.phone,
+            image: form.image || null,
+          })
+          .select('id')
+          .single();
+
+        if (error) {
+          throw error;
+        }
+
+        if (data) {
+          setExistingProfileId(data.id);
+        }
       }
 
-      // Always save to localStorage for backward compatibility
+      // Also save to localStorage for quick access
       saveProfileLocally(form);
+
+      toast({
+        title: "Profile saved successfully!",
+        description: "Your profile is now available across all devices and visible to teachers.",
+      });
     } catch (error: any) {
       console.error('Error saving profile:', error);
+      
+      // If Supabase fails, still save locally
+      saveProfileLocally(form);
+      
       toast({
-        title: "Failed to save profile",
-        description: error.message || "Please try again.",
+        title: "Profile saved locally",
+        description: error.message || "Could not sync to server, but saved locally.",
         variant: "destructive",
       });
     } finally {
@@ -245,16 +264,18 @@ const Profile = () => {
       .slice(0, 2);
   }
 
+  const isFormValid = nameAvailable !== false && phoneAvailable !== false && 
+                     form.name.trim() && form.class.trim() && form.division.trim() && 
+                     form.dob && form.phone.trim();
+
   return (
     <div className="flex flex-col items-center justify-center h-full pt-12 animate-fade-in">
       <Card className="w-full max-w-sm shadow-lg">
         <CardHeader>
           <CardTitle className="text-2xl text-blue-800 text-center">Profile</CardTitle>
-          {!isAuthenticated && (
-            <p className="text-sm text-center text-gray-600">
-              Sign in to sync your profile across devices
-            </p>
-          )}
+          <p className="text-sm text-center text-gray-600">
+            Your profile will be synced across all devices
+          </p>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={handleSubmit} autoComplete="off">
@@ -312,7 +333,7 @@ const Profile = () => {
                 autoComplete="off"
               />
               {nameAvailable === false && (
-                <span className="text-xs text-red-600">This name is already taken by another profile.</span>
+                <span className="text-xs text-red-600">This name is already taken by another student.</span>
               )}
               {nameAvailable === true && form.name.trim() && (
                 <span className="text-xs text-green-600">This name is available!</span>
@@ -364,13 +385,19 @@ const Profile = () => {
                 pattern="[0-9]*"
                 required
               />
+              {phoneAvailable === false && (
+                <span className="text-xs text-red-600">This phone number is already registered.</span>
+              )}
+              {phoneAvailable === true && form.phone.trim() && (
+                <span className="text-xs text-green-600">This phone number is available!</span>
+              )}
             </div>
             <Button 
               className="w-full mt-2" 
               type="submit"
-              disabled={nameAvailable === false || isLoading}
+              disabled={!isFormValid || isLoading}
             >
-              {isLoading ? "Saving..." : "Update Profile"}
+              {isLoading ? "Saving..." : existingProfileId ? "Update Profile" : "Create Profile"}
             </Button>
           </form>
         </CardContent>

@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from "react";
 import { Send, Users, Delete } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -64,34 +63,16 @@ const TeachersChat: React.FC = () => {
 
   const [profiles, setProfiles] = useState<Profile[]>(() => getStoredProfiles());
   const [supabaseProfiles, setSupabaseProfiles] = useState<Profile[]>([]);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   const currentUser = getCurrentUser();
 
-  // Check authentication status
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setIsAuthenticated(!!session);
-      console.log("Authentication status:", !!session);
-    };
-    checkAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setIsAuthenticated(!!session);
-      console.log("Auth state changed:", !!session);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // Fetch profiles from Supabase
+  // Fetch profiles from Supabase public_profiles
   useEffect(() => {
     const fetchSupabaseProfiles = async () => {
-      console.log("Fetching Supabase profiles, authenticated:", isAuthenticated);
+      console.log("Fetching Supabase profiles from public_profiles...");
       
       const { data: profilesData, error } = await supabase
-        .from('profiles')
+        .from('public_profiles')
         .select('*');
 
       if (error) {
@@ -109,12 +90,12 @@ const TeachersChat: React.FC = () => {
           image: profile.image || undefined,
         }));
         setSupabaseProfiles(formattedProfiles);
-        console.log("Loaded profiles from Supabase:", formattedProfiles);
+        console.log("Loaded profiles from Supabase public_profiles:", formattedProfiles);
       }
     };
 
     fetchSupabaseProfiles();
-  }, [isAuthenticated]);
+  }, []);
 
   // Combine all profiles
   useEffect(() => {

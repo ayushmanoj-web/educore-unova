@@ -76,33 +76,48 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
   useEffect(() => {
     if (viewMode === "profiles") {
       const loadProfiles = async () => {
+        setIsLoading(true);
         let allProfiles: Profile[] = [];
 
-        // Get Supabase profiles
-        const { data: supabaseProfiles, error } = await supabase
-          .from('profiles')
-          .select('*');
+        try {
+          // Get all profiles from Supabase public_profiles
+          const { data: supabaseProfiles, error } = await supabase
+            .from('public_profiles')
+            .select('*')
+            .order('created_at', { ascending: false });
 
-        if (supabaseProfiles && !error) {
-          const formattedSupabaseProfiles: Profile[] = supabaseProfiles.map(profile => ({
-            name: profile.name,
-            class: profile.class,
-            division: profile.division,
-            dob: profile.dob,
-            phone: profile.phone,
-            image: profile.image || undefined,
-          }));
-          allProfiles = [...formattedSupabaseProfiles];
+          if (supabaseProfiles && !error) {
+            const formattedSupabaseProfiles: Profile[] = supabaseProfiles.map(profile => ({
+              name: profile.name,
+              class: profile.class,
+              division: profile.division,
+              dob: profile.dob,
+              phone: profile.phone,
+              image: profile.image || undefined,
+            }));
+            allProfiles = [...formattedSupabaseProfiles];
+          }
+
+          // Also get localStorage profiles for backward compatibility
+          const localProfiles = getStoredProfiles();
+          
+          // Merge profiles, avoiding duplicates by phone number
+          const phoneNumbers = new Set(allProfiles.map(p => p.phone));
+          const uniqueLocalProfiles = localProfiles.filter(p => !phoneNumbers.has(p.phone));
+          
+          setProfiles([...allProfiles, ...uniqueLocalProfiles]);
+        } catch (error) {
+          console.error('Error loading profiles:', error);
+          // Fallback to localStorage only
+          setProfiles(getStoredProfiles());
+          toast({
+            title: "Warning",
+            description: "Could not load all profiles from server. Showing local profiles only.",
+            variant: "destructive",
+          });
+        } finally {
+          setIsLoading(false);
         }
-
-        // Also get localStorage profiles for backward compatibility
-        const localProfiles = getStoredProfiles();
-        
-        // Merge profiles, avoiding duplicates by phone number
-        const phoneNumbers = new Set(allProfiles.map(p => p.phone));
-        const uniqueLocalProfiles = localProfiles.filter(p => !phoneNumbers.has(p.phone));
-        
-        setProfiles([...allProfiles, ...uniqueLocalProfiles]);
       };
 
       loadProfiles();
@@ -322,12 +337,17 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
               Back to Menu
             </Button>
             <div className="overflow-y-auto max-h-[60vh]">
-              {profiles.length === 0 ? (
+              {isLoading ? (
+                <div className="text-center py-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                  <span className="text-sm text-slate-500">Loading profiles...</span>
+                </div>
+              ) : profiles.length === 0 ? (
                 <span className="text-center text-sm text-slate-500">No student profiles available yet.</span>
               ) : (
                 <>
                   <div className="text-center text-xs text-green-600 mb-2">
-                    Showing profiles from all devices
+                    Showing {profiles.length} student profile{profiles.length !== 1 ? 's' : ''} from all devices
                   </div>
                   {profiles.map((student, idx) => (
                     <div key={student.phone + idx} className="flex items-center gap-3 border rounded-xl px-4 py-3 shadow bg-slate-50">
@@ -398,7 +418,7 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
                 {isLoading ? "Sending..." : "Send Notification to All Students"}
               </Button>
               <div className="text-center text-sm text-green-600">
-                Note: Notifications are now public and don't require authentication.
+                Note: Notifications are public and don't require authentication.
               </div>
             </div>
           </div>
