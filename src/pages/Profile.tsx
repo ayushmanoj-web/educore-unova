@@ -190,46 +190,51 @@ const Profile = () => {
     setIsLoading(true);
 
     try {
-      // Save to Supabase public_profiles (no authentication required)
+      console.log('Attempting to save profile:', form);
+      
+      // Prepare the profile data
+      const profileData = {
+        name: form.name.trim(),
+        class: form.class.trim(),
+        division: form.division.trim(),
+        dob: form.dob,
+        phone: form.phone.trim(),
+        image: form.image || null,
+      };
+
+      let result;
+      
       if (existingProfileId) {
         // Update existing profile
-        const { error } = await supabase
+        console.log('Updating existing profile with ID:', existingProfileId);
+        result = await supabase
           .from('public_profiles')
           .update({
-            name: form.name,
-            class: form.class,
-            division: form.division,
-            dob: form.dob,
-            phone: form.phone,
-            image: form.image || null,
+            ...profileData,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', existingProfileId);
+          .eq('id', existingProfileId)
+          .select();
 
-        if (error) {
-          throw error;
+        if (result.error) {
+          throw result.error;
         }
+        console.log('Profile updated successfully:', result.data);
       } else {
         // Create new profile
-        const { data, error } = await supabase
+        console.log('Creating new profile');
+        result = await supabase
           .from('public_profiles')
-          .insert({
-            name: form.name,
-            class: form.class,
-            division: form.division,
-            dob: form.dob,
-            phone: form.phone,
-            image: form.image || null,
-          })
-          .select('id')
-          .single();
+          .insert(profileData)
+          .select();
 
-        if (error) {
-          throw error;
+        if (result.error) {
+          throw result.error;
         }
 
-        if (data) {
-          setExistingProfileId(data.id);
+        if (result.data && result.data.length > 0) {
+          setExistingProfileId(result.data[0].id);
+          console.log('New profile created with ID:', result.data[0].id);
         }
       }
 
@@ -240,15 +245,18 @@ const Profile = () => {
         title: "Profile saved successfully!",
         description: "Your profile is now available across all devices and visible to teachers.",
       });
+
+      console.log('Profile saved successfully to both Supabase and localStorage');
+      
     } catch (error: any) {
-      console.error('Error saving profile:', error);
+      console.error('Error saving profile to Supabase:', error);
       
       // If Supabase fails, still save locally
       saveProfileLocally(form);
       
       toast({
         title: "Profile saved locally",
-        description: error.message || "Could not sync to server, but saved locally.",
+        description: `Could not sync to server: ${error.message || 'Unknown error'}. Profile saved locally.`,
         variant: "destructive",
       });
     } finally {
