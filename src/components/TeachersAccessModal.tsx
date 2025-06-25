@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { User, Phone, Eye, EyeOff, Users, Bell } from "lucide-react";
+import { User, Phone, Eye, EyeOff, Users, Bell, Calendar, Check, X, Clock } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -21,7 +21,25 @@ type Profile = {
   image?: string;
 };
 
-type ViewMode = "login" | "menu" | "profiles" | "notifications";
+type LeaveApplication = {
+  id: string;
+  student_name: string;
+  student_class: string;
+  student_division: string;
+  student_dob: string;
+  student_phone: string;
+  student_image?: string;
+  number_of_days: number;
+  start_date: string;
+  return_date: string;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  submitted_at: string;
+  reviewed_at?: string;
+  reviewed_by?: string;
+};
+
+type ViewMode = "login" | "menu" | "profiles" | "notifications" | "absents";
 
 const LOCAL_STORAGE_KEY = "student-profiles";
 const TEACHER_LOGIN_KEY = "teacher-logged-in";
@@ -57,9 +75,10 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
   const [viewMode, setViewMode] = useState<ViewMode>("login");
   const [error, setError] = useState("");
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [leaveApplications, setLeaveApplications] = useState<LeaveApplication[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState("");
-  const [selectedAction, setSelectedAction] = useState<"profiles" | "notifications" | null>(null);
+  const [selectedAction, setSelectedAction] = useState<"profiles" | "notifications" | "absents" | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -124,6 +143,37 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
     }
   }, [viewMode, open]);
 
+  useEffect(() => {
+    if (viewMode === "absents") {
+      const loadLeaveApplications = async () => {
+        setIsLoading(true);
+        try {
+          const { data, error } = await supabase
+            .from('leave_applications')
+            .select('*')
+            .order('submitted_at', { ascending: false });
+
+          if (error) {
+            throw error;
+          }
+
+          setLeaveApplications(data || []);
+        } catch (error) {
+          console.error('Error loading leave applications:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load leave applications. Please try again.",
+            variant: "destructive",
+          });
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      loadLeaveApplications();
+    }
+  }, [viewMode, open]);
+
   // Reset state when closing
   const handleOpenChange = (isOpen: boolean) => {
     onOpenChange(isOpen);
@@ -156,12 +206,14 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
     }
   };
 
-  const handleActionSelect = (action: "profiles" | "notifications") => {
+  const handleActionSelect = (action: "profiles" | "notifications" | "absents") => {
     setSelectedAction(action);
     if (action === "profiles") {
       setViewMode("profiles");
     } else if (action === "notifications") {
       setViewMode("notifications");
+    } else if (action === "absents") {
+      setViewMode("absents");
     }
   };
 
@@ -212,6 +264,47 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
     }
   };
 
+  const handleLeaveApplicationAction = async (applicationId: string, action: 'approved' | 'rejected') => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('leave_applications')
+        .update({
+          status: action,
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: 'Teacher'
+        })
+        .eq('id', applicationId);
+
+      if (error) {
+        throw error;
+      }
+
+      // Update local state
+      setLeaveApplications(prev => 
+        prev.map(app => 
+          app.id === applicationId 
+            ? { ...app, status: action, reviewed_at: new Date().toISOString(), reviewed_by: 'Teacher' }
+            : app
+        )
+      );
+
+      toast({
+        title: `Application ${action}`,
+        description: `Leave application has been ${action}.`,
+      });
+    } catch (error) {
+      console.error('Error updating leave application:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update leave application. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleBackToMenu = () => {
     setViewMode("menu");
     setError("");
@@ -237,6 +330,8 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
         return "All Students' Profiles";
       case "notifications":
         return "Send Notification";
+      case "absents":
+        return "View Leave Applications";
       default:
         return "For Teachers Only";
     }
@@ -249,6 +344,36 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
       .join("")
       .slice(0, 2);
   }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return 'text-green-600 bg-green-50';
+      case 'rejected':
+        return 'text-red-600 bg-red-50';
+      default:
+        return 'text-yellow-600 bg-yellow-50';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return <Check size={16} />;
+      case 'rejected':
+        return <X size={16} />;
+      default:
+        return <Clock size={16} />;
+    }
+  };
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
@@ -323,6 +448,14 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
             >
               <Bell size={20} />
               Send Notifications
+            </Button>
+            <Button 
+              onClick={() => handleActionSelect("absents")}
+              className="w-full flex items-center justify-center gap-2"
+              variant="outline"
+            >
+              <Calendar size={20} />
+              View Absents
             </Button>
           </div>
         )}
@@ -420,6 +553,104 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
               <div className="text-center text-sm text-green-600">
                 Note: Notifications are public and don't require authentication.
               </div>
+            </div>
+          </div>
+        )}
+
+        {viewMode === "absents" && (
+          <div className="mt-2 flex flex-col gap-3">
+            <Button 
+              variant="outline" 
+              onClick={handleBackToMenu} 
+              className="self-start mb-2"
+            >
+              Back to Menu
+            </Button>
+            <div className="overflow-y-auto max-h-[60vh]">
+              {isLoading ? (
+                <div className="text-center py-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                  <span className="text-sm text-slate-500">Loading leave applications...</span>
+                </div>
+              ) : leaveApplications.length === 0 ? (
+                <div className="text-center py-8">
+                  <Calendar className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                  <span className="text-center text-sm text-slate-500">No leave applications submitted yet.</span>
+                </div>
+              ) : (
+                <>
+                  <div className="text-center text-xs text-green-600 mb-4">
+                    Showing {leaveApplications.length} leave application{leaveApplications.length !== 1 ? 's' : ''}
+                  </div>
+                  {leaveApplications.map((application) => (
+                    <div key={application.id} className="border rounded-xl p-4 mb-4 bg-white shadow-sm">
+                      <div className="flex items-start gap-3 mb-3">
+                        <Avatar className="w-12 h-12">
+                          {application.student_image ? (
+                            <AvatarImage src={application.student_image} alt={application.student_name} />
+                          ) : (
+                            <AvatarFallback className="bg-blue-100 text-blue-800">
+                              {getInitials(application.student_name)}
+                            </AvatarFallback>
+                          )}
+                        </Avatar>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="font-semibold text-blue-900">{application.student_name}</h3>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(application.status)}`}>
+                              {getStatusIcon(application.status)}
+                              {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
+                            </span>
+                          </div>
+                          <div className="text-sm text-slate-700 space-y-1">
+                            <p><strong>Class:</strong> {application.student_class} | <strong>Division:</strong> {application.student_division}</p>
+                            <p><strong>DOB:</strong> {formatDate(application.student_dob)}</p>
+                            <p><strong>Phone:</strong> {application.student_phone}</p>
+                            <p><strong>Days:</strong> {application.number_of_days}</p>
+                            <p><strong>Period:</strong> {formatDate(application.start_date)} to {formatDate(application.return_date)}</p>
+                            <p><strong>Submitted:</strong> {formatDate(application.submitted_at)}</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="mb-3">
+                        <p className="text-sm font-medium text-slate-700 mb-1">Reason:</p>
+                        <p className="text-sm text-slate-600 bg-slate-50 p-2 rounded">{application.reason}</p>
+                      </div>
+
+                      {application.status === 'pending' && (
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            className="flex-1 bg-green-600 hover:bg-green-700"
+                            onClick={() => handleLeaveApplicationAction(application.id, 'approved')}
+                            disabled={isLoading}
+                          >
+                            <Check size={16} className="mr-1" />
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="flex-1"
+                            onClick={() => handleLeaveApplicationAction(application.id, 'rejected')}
+                            disabled={isLoading}
+                          >
+                            <X size={16} className="mr-1" />
+                            Reject
+                          </Button>
+                        </div>
+                      )}
+
+                      {application.reviewed_at && (
+                        <div className="mt-2 text-xs text-slate-500">
+                          Reviewed by {application.reviewed_by} on {formatDate(application.reviewed_at)}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           </div>
         )}

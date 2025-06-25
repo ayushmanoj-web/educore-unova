@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const leaveFormSchema = z.object({
   numberOfDays: z.string().min(1, 'Number of days is required').refine(
@@ -37,8 +37,23 @@ const leaveFormSchema = z.object({
 
 type LeaveFormValues = z.infer<typeof leaveFormSchema>;
 
+// Get current user profile from localStorage
+const getCurrentUserProfile = () => {
+  try {
+    const profiles = localStorage.getItem("student-profiles");
+    if (profiles) {
+      const parsedProfiles = JSON.parse(profiles);
+      return parsedProfiles.length > 0 ? parsedProfiles[parsedProfiles.length - 1] : null;
+    }
+  } catch (error) {
+    console.error('Error getting current user profile:', error);
+  }
+  return null;
+};
+
 const Leave = () => {
   const navigate = useNavigate();
+  const currentUser = getCurrentUserProfile();
   
   const form = useForm<LeaveFormValues>({
     resolver: zodResolver(leaveFormSchema),
@@ -48,15 +63,88 @@ const Leave = () => {
     },
   });
 
-  const onSubmit = (data: LeaveFormValues) => {
-    console.log('Leave application submitted:', data);
-    toast({
-      title: 'Leave Application Submitted',
-      description: 'Your leave application has been submitted for approval.',
-    });
-    // Here you would typically send the data to your backend
-    navigate('/');
+  const onSubmit = async (data: LeaveFormValues) => {
+    if (!currentUser) {
+      toast({
+        title: 'Profile Required',
+        description: 'Please create your profile first before submitting a leave application.',
+        variant: 'destructive',
+      });
+      navigate('/profile');
+      return;
+    }
+
+    try {
+      // Submit leave application to the database
+      const { error } = await supabase
+        .from('leave_applications')
+        .insert({
+          student_name: currentUser.name,
+          student_class: currentUser.class,
+          student_division: currentUser.division,
+          student_dob: currentUser.dob,
+          student_phone: currentUser.phone,
+          student_image: currentUser.image || null,
+          number_of_days: parseInt(data.numberOfDays),
+          start_date: data.startDate.toISOString().split('T')[0],
+          return_date: data.returnDate.toISOString().split('T')[0],
+          reason: data.reason,
+          status: 'pending'
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: 'Leave Application Submitted',
+        description: 'Your leave application has been submitted for teacher approval.',
+      });
+
+      navigate('/');
+    } catch (error: any) {
+      console.error('Error submitting leave application:', error);
+      toast({
+        title: 'Submission Failed',
+        description: error.message || 'Failed to submit leave application. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
+
+  // Check if user has a profile
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen w-full px-8 py-10 bg-gradient-to-tr from-slate-50 via-white to-blue-50">
+        <main className="max-w-2xl mx-auto">
+          <div className="mb-6">
+            <Button
+              variant="ghost"
+              onClick={() => navigate('/')}
+              className="mb-4 hover:bg-blue-50"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dashboard
+            </Button>
+            <h1 className="text-3xl font-bold text-blue-900 mb-2">Profile Required</h1>
+            <p className="text-slate-600">You need to create your profile before submitting a leave application.</p>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+            <p className="text-lg text-slate-700 mb-6">
+              Please create your profile first to submit leave applications.
+            </p>
+            <Button
+              onClick={() => navigate('/profile')}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Create Profile
+            </Button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full px-8 py-10 bg-gradient-to-tr from-slate-50 via-white to-blue-50">
@@ -72,6 +160,11 @@ const Leave = () => {
           </Button>
           <h1 className="text-3xl font-bold text-blue-900 mb-2">Submit Leave Application</h1>
           <p className="text-slate-600">Fill out the form below to submit your leave request</p>
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+            <p className="text-sm text-blue-800">
+              <strong>Submitting as:</strong> {currentUser.name} (Class: {currentUser.class}, Division: {currentUser.division})
+            </p>
+          </div>
         </div>
 
         <div className="bg-white rounded-xl shadow-lg p-8">
