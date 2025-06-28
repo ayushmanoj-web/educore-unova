@@ -36,6 +36,60 @@ export type Database = {
         }
         Relationships: []
       }
+      leave_applications: {
+        Row: {
+          id: string
+          student_name: string
+          student_class: string
+          student_division: string
+          student_dob: string
+          student_phone: string
+          student_image: string | null
+          number_of_days: number
+          start_date: string
+          return_date: string
+          reason: string
+          status: string
+          submitted_at: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+        }
+        Insert: {
+          id?: string
+          student_name: string
+          student_class: string
+          student_division: string
+          student_dob: string
+          student_phone: string
+          student_image?: string | null
+          number_of_days: number
+          start_date: string
+          return_date: string
+          reason: string
+          status?: string
+          submitted_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+        }
+        Update: {
+          id?: string
+          student_name?: string
+          student_class?: string
+          student_division?: string
+          student_dob?: string
+          student_phone?: string
+          student_image?: string | null
+          number_of_days?: number
+          start_date?: string
+          return_date?: string
+          reason?: string
+          status?: string
+          submitted_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           audio_url: string | null
@@ -132,6 +186,42 @@ export type Database = {
           phone?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      public_profiles: {
+        Row: {
+          class: string
+          created_at: string
+          division: string
+          dob: string
+          id: string
+          image: string | null
+          name: string
+          phone: string
+          updated_at: string
+        }
+        Insert: {
+          class: string
+          created_at?: string
+          division: string
+          dob: string
+          id?: string
+          image?: string | null
+          name: string
+          phone: string
+          updated_at?: string
+        }
+        Update: {
+          class?: string
+          created_at?: string
+          division?: string
+          dob?: string
+          id?: string
+          image?: string | null
+          name?: string
+          phone?: string
+          updated_at?: string
         }
         Relationships: []
       }
