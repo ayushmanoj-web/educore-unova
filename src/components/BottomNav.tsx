@@ -6,7 +6,7 @@ import TeachersAccessModal from "./TeachersAccessModal";
 
 const navItems = [
   { to: "/", label: "Home", icon: Home },
-  { to: "/downloads", label: "Downloads", icon: Download },
+  { to: "/downloads", label: "Study Materials", icon: Download },
   { to: "/notifications", label: "Notifications", icon: Bell },
   { to: "/profile", label: "Profile", icon: User }
   // "For Teachers" removed here, it's a special button below

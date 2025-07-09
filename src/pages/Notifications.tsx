@@ -27,6 +27,7 @@ const Notifications = () => {
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
+        .eq('role', 'student')
         .order('timestamp', { ascending: false });
 
       if (error) {
