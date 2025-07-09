@@ -21,6 +21,7 @@ export type Database = {
           message: string
           sender_image: string | null
           sender_name: string
+          sender_phone: string | null
           timestamp: string
         }
         Insert: {
@@ -29,6 +30,7 @@ export type Database = {
           message: string
           sender_image?: string | null
           sender_name: string
+          sender_phone?: string | null
           timestamp?: string
         }
         Update: {
@@ -37,6 +39,7 @@ export type Database = {
           message?: string
           sender_image?: string | null
           sender_name?: string
+          sender_phone?: string | null
           timestamp?: string
         }
         Relationships: []

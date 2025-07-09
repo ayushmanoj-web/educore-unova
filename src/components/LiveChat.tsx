@@ -11,6 +11,7 @@ type ChatMessage = {
   message: string;
   sender_name: string;
   sender_image: string | null;
+  sender_phone: string | null;
   timestamp: string;
 };
 
@@ -23,11 +24,21 @@ type Profile = {
 const LiveChat = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  const [senderName, setSenderName] = useState("");
+  const [senderPhone, setSenderPhone] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [showProfiles, setShowProfiles] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Get current user from localStorage profiles
+  const getCurrentUser = () => {
+    const storedProfiles = localStorage.getItem("student-profiles");
+    if (storedProfiles) {
+      const parsed = JSON.parse(storedProfiles);
+      return parsed.length > 0 ? parsed[parsed.length - 1] : null;
+    }
+    return null;
+  };
 
   useEffect(() => {
     fetchMessages();
@@ -152,10 +163,11 @@ const LiveChat = () => {
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newMessage.trim() || !senderName.trim()) {
+    const currentUser = getCurrentUser();
+    if (!newMessage.trim() || !currentUser) {
       toast({
         title: "Missing information",
-        description: "Please enter your name and a message.",
+        description: currentUser ? "Please enter a message." : "Please set up your profile first.",
         variant: "destructive",
       });
       return;
@@ -166,8 +178,9 @@ const LiveChat = () => {
         .from('chat_messages')
         .insert({
           message: newMessage.trim(),
-          sender_name: senderName.trim(),
-          sender_image: null, // We could add image selection later
+          sender_name: currentUser.name,
+          sender_phone: currentUser.phone,
+          sender_image: currentUser.image || null,
         });
 
       if (error) {
@@ -184,6 +197,11 @@ const LiveChat = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const getProfileByPhone = (phone: string | null) => {
+    if (!phone) return null;
+    return profiles.find(p => p.phone === phone);
   };
 
   const formatTimestamp = (timestamp: string) => {
@@ -259,46 +277,46 @@ const LiveChat = () => {
             <p>No messages yet. Start the conversation!</p>
           </div>
         ) : (
-          messages.map((message) => (
-            <div key={message.id} className="flex items-start gap-3">
-              <Avatar className="w-8 h-8">
-                {message.sender_image ? (
-                  <AvatarImage src={message.sender_image} alt={message.sender_name} />
-                ) : (
-                  <AvatarFallback className="text-xs bg-blue-100 text-blue-800">
-                    {getInitials(message.sender_name)}
-                  </AvatarFallback>
-                )}
-              </Avatar>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium text-sm text-gray-900">
-                    {message.sender_name}
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    {formatTimestamp(message.timestamp)}
-                  </span>
-                </div>
-                <div className="bg-gray-100 rounded-lg px-3 py-2 text-sm">
-                  {message.message}
+          messages.map((message) => {
+            const profile = getProfileByPhone(message.sender_phone) || {
+              name: message.sender_name,
+              image: message.sender_image,
+              phone: message.sender_phone || ''
+            };
+            
+            return (
+              <div key={message.id} className="flex items-start gap-3">
+                <Avatar className="w-8 h-8">
+                  {profile.image ? (
+                    <AvatarImage src={profile.image} alt={profile.name} />
+                  ) : (
+                    <AvatarFallback className="text-xs bg-blue-100 text-blue-800">
+                      {getInitials(profile.name)}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-medium text-sm text-gray-900">
+                      {profile.name}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {formatTimestamp(message.timestamp)}
+                    </span>
+                  </div>
+                  <div className="bg-gray-100 rounded-lg px-3 py-2 text-sm">
+                    {message.message}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
         <div ref={messagesEndRef} />
       </div>
 
       {/* Message Input */}
       <form onSubmit={sendMessage} className="p-4 border-t bg-gray-50">
-        <div className="flex gap-2 mb-2">
-          <Input
-            value={senderName}
-            onChange={(e) => setSenderName(e.target.value)}
-            placeholder="Your name..."
-            className="flex-1"
-          />
-        </div>
         <div className="flex gap-2">
           <Input
             value={newMessage}
