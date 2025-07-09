@@ -33,7 +33,7 @@ type LeaveApplication = {
   start_date: string;
   return_date: string;
   reason: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: string;
   submitted_at: string;
   reviewed_at?: string;
   reviewed_by?: string;
@@ -455,7 +455,7 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
               variant="outline"
             >
               <Calendar size={20} />
-              View Absents
+              View Leaves
             </Button>
           </div>
         )}

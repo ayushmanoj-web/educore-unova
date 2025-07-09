@@ -69,12 +69,15 @@ const LiveChat = () => {
 
   const fetchProfiles = async () => {
     try {
+      console.log('Fetching profiles...');
+      
       // Get stored profiles from localStorage
       const storedProfiles = localStorage.getItem("student-profiles");
       let localProfiles: Profile[] = [];
       
       if (storedProfiles) {
         const parsed = JSON.parse(storedProfiles);
+        console.log('Local profiles found:', parsed);
         localProfiles = parsed.map((p: any) => ({
           name: p.name,
           image: p.image || null,
@@ -82,10 +85,12 @@ const LiveChat = () => {
         }));
       }
 
-      // Get profiles from Supabase
+      // Get profiles from Supabase public_profiles table
       const { data: supabaseProfiles, error } = await supabase
-        .from('profiles')
+        .from('public_profiles')
         .select('name, image, phone');
+
+      console.log('Supabase profiles:', supabaseProfiles, 'Error:', error);
 
       let allProfiles = [...localProfiles];
       
@@ -95,6 +100,7 @@ const LiveChat = () => {
         allProfiles = [...allProfiles, ...uniqueSupabaseProfiles];
       }
 
+      console.log('All profiles combined:', allProfiles);
       setProfiles(allProfiles);
     } catch (error) {
       console.error('Error fetching profiles:', error);
@@ -119,15 +125,15 @@ const LiveChat = () => {
       )
       .subscribe();
 
-    // Set up real-time subscription for profiles
+    // Set up real-time subscription for public_profiles
     const profilesChannel = supabase
-      .channel('profiles_realtime')
+      .channel('public_profiles_realtime')
       .on(
         'postgres_changes',
         {
           event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
           schema: 'public',
-          table: 'profiles',
+          table: 'public_profiles',
         },
         (payload) => {
           console.log('Profile change detected:', payload);
