@@ -5,7 +5,7 @@ import FloatingChatButton from "@/components/FloatingChatButton";
 import AIBot from "@/components/AIBot";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { MessageCircle, TrendingUp } from "lucide-react";
+import { MessageCircle, TrendingUp, Calendar } from "lucide-react";
 
 const Index = () => {
   return (
@@ -13,7 +13,7 @@ const Index = () => {
       <main className="max-w-6xl mx-auto">
         <DashboardHero />
         {/* Action Buttons */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
           <Link to="/teacher-chat">
             <Button className="w-full h-16 text-lg font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-lg">
               <MessageCircle className="mr-3 h-6 w-6" />
@@ -24,6 +24,12 @@ const Index = () => {
             <Button className="w-full h-16 text-lg font-semibold bg-green-600 hover:bg-green-700 text-white shadow-lg">
               <TrendingUp className="mr-3 h-6 w-6" />
               Progress Tracker
+            </Button>
+          </Link>
+          <Link to="/attendance">
+            <Button className="w-full h-16 text-lg font-semibold bg-purple-600 hover:bg-purple-700 text-white shadow-lg">
+              <Calendar className="mr-3 h-6 w-6" />
+              Your Attendance
             </Button>
           </Link>
         </div>

@@ -96,6 +96,15 @@ const Leave = () => {
         throw error;
       }
 
+      // Send notification to attendance
+      await supabase
+        .from('notifications')
+        .insert({
+          title: 'Leave Application Submitted',
+          message: `Your leave application for ${data.numberOfDays} day(s) from ${data.startDate.toISOString().split('T')[0]} to ${data.returnDate.toISOString().split('T')[0]} has been submitted. Reason: ${data.reason}`,
+          role: 'student'
+        });
+
       toast({
         title: 'Leave Application Submitted',
         description: 'Your leave application has been submitted for teacher approval.',

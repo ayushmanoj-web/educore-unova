@@ -16,6 +16,7 @@ import LiveChatPage from "./pages/LiveChatPage";
 import Leave from "./pages/Leave";
 import TeacherChat from "./pages/TeacherChat";
 import Progress from "./pages/Progress";
+import Attendance from "./pages/Attendance";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/leave" element={<Leave />} />
             <Route path="/teacher-chat" element={<TeacherChat />} />
             <Route path="/progress" element={<Progress />} />
+            <Route path="/attendance" element={<Attendance />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <BottomNav />
