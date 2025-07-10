@@ -44,6 +44,42 @@ export type Database = {
         }
         Relationships: []
       }
+      homework_status: {
+        Row: {
+          assignment_id: string
+          assignment_name: string
+          created_at: string
+          due_date: string
+          id: string
+          student_id: string
+          subject: string
+          submitted: boolean
+          submitted_at: string | null
+        }
+        Insert: {
+          assignment_id: string
+          assignment_name: string
+          created_at?: string
+          due_date: string
+          id?: string
+          student_id: string
+          subject: string
+          submitted?: boolean
+          submitted_at?: string | null
+        }
+        Update: {
+          assignment_id?: string
+          assignment_name?: string
+          created_at?: string
+          due_date?: string
+          id?: string
+          student_id?: string
+          subject?: string
+          submitted?: boolean
+          submitted_at?: string | null
+        }
+        Relationships: []
+      }
       leave_applications: {
         Row: {
           created_at: string
@@ -121,6 +157,36 @@ export type Database = {
           id?: string
           sender_phone?: string
           text?: string | null
+          timestamp?: string
+        }
+        Relationships: []
+      }
+      messages_chat: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message_text: string
+          receiver_id: string
+          sender_id: string
+          timestamp: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message_text: string
+          receiver_id: string
+          sender_id: string
+          timestamp?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message_text?: string
+          receiver_id?: string
+          sender_id?: string
           timestamp?: string
         }
         Relationships: []
@@ -233,6 +299,63 @@ export type Database = {
           name?: string
           phone?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      teacher_student_assignments: {
+        Row: {
+          created_at: string
+          id: string
+          student_id: string
+          subject: string
+          teacher_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          student_id: string
+          subject: string
+          teacher_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          student_id?: string
+          subject?: string
+          teacher_id?: string
+        }
+        Relationships: []
+      }
+      test_scores: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          score: number
+          student_id: string
+          subject: string
+          test_name: string
+          total: number
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          score: number
+          student_id: string
+          subject: string
+          test_name: string
+          total: number
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          score?: number
+          student_id?: string
+          subject?: string
+          test_name?: string
+          total?: number
         }
         Relationships: []
       }

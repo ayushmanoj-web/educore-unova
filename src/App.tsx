@@ -14,6 +14,8 @@ import BottomNav from "./components/BottomNav";
 import Timetable from "./pages/Timetable";
 import LiveChatPage from "./pages/LiveChatPage";
 import Leave from "./pages/Leave";
+import TeacherChat from "./pages/TeacherChat";
+import Progress from "./pages/Progress";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +36,8 @@ const App = () => (
             <Route path="/timetable" element={<Timetable />} />
             <Route path="/chat" element={<LiveChatPage />} />
             <Route path="/leave" element={<Leave />} />
+            <Route path="/teacher-chat" element={<TeacherChat />} />
+            <Route path="/progress" element={<Progress />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <BottomNav />
