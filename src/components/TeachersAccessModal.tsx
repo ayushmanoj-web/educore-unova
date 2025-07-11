@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { User, Phone, Eye, EyeOff, Users, Bell, Calendar, Check, X, Clock } from "lucide-react";
+import { User, Phone, Eye, EyeOff, Users, Bell, Calendar, Check, X, Clock, Search, FileText, ArrowLeft } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -39,7 +39,17 @@ type LeaveApplication = {
   reviewed_by?: string;
 };
 
-type ViewMode = "login" | "menu" | "profiles" | "notifications" | "absents";
+type StudentWithLeaveCount = {
+  name: string;
+  class: string;
+  division: string;
+  dob: string;
+  phone: string;
+  image?: string;
+  leaveCount: number;
+};
+
+type ViewMode = "login" | "menu" | "profiles" | "notifications" | "absents" | "leave_history" | "student_leave_detail";
 
 const LOCAL_STORAGE_KEY = "student-profiles";
 const TEACHER_LOGIN_KEY = "teacher-logged-in";
@@ -78,8 +88,12 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
   const [leaveApplications, setLeaveApplications] = useState<LeaveApplication[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState("");
-  const [selectedAction, setSelectedAction] = useState<"profiles" | "notifications" | "absents" | null>(null);
+  const [selectedAction, setSelectedAction] = useState<"profiles" | "notifications" | "absents" | "leave_history" | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [studentsWithLeaves, setStudentsWithLeaves] = useState<StudentWithLeaveCount[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<StudentWithLeaveCount | null>(null);
+  const [selectedStudentLeaves, setSelectedStudentLeaves] = useState<LeaveApplication[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -174,6 +188,69 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
     }
   }, [viewMode, open]);
 
+  useEffect(() => {
+    if (viewMode === "leave_history") {
+      const loadStudentsWithLeaves = async () => {
+        setIsLoading(true);
+        try {
+          // Get all profiles
+          let allProfiles: Profile[] = [];
+          
+          const { data: supabaseProfiles, error } = await supabase
+            .from('public_profiles')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+          if (supabaseProfiles && !error) {
+            const formattedSupabaseProfiles: Profile[] = supabaseProfiles.map(profile => ({
+              name: profile.name,
+              class: profile.class,
+              division: profile.division,
+              dob: profile.dob,
+              phone: profile.phone,
+              image: profile.image || undefined,
+            }));
+            allProfiles = [...formattedSupabaseProfiles];
+          }
+
+          // Get localStorage profiles for backward compatibility
+          const localProfiles = getStoredProfiles();
+          const phoneNumbers = new Set(allProfiles.map(p => p.phone));
+          const uniqueLocalProfiles = localProfiles.filter(p => !phoneNumbers.has(p.phone));
+          allProfiles = [...allProfiles, ...uniqueLocalProfiles];
+
+          // Get leave counts for each student
+          const studentsWithLeaveCounts: StudentWithLeaveCount[] = await Promise.all(
+            allProfiles.map(async (profile) => {
+              const { data: leaves, error } = await supabase
+                .from('leave_applications')
+                .select('id')
+                .eq('student_phone', profile.phone);
+
+              return {
+                ...profile,
+                leaveCount: leaves ? leaves.length : 0
+              };
+            })
+          );
+
+          setStudentsWithLeaves(studentsWithLeaveCounts);
+        } catch (error) {
+          console.error('Error loading students with leaves:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load students leave history. Please try again.",
+            variant: "destructive",
+          });
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      loadStudentsWithLeaves();
+    }
+  }, [viewMode, open]);
+
   // Reset state when closing
   const handleOpenChange = (isOpen: boolean) => {
     onOpenChange(isOpen);
@@ -206,7 +283,7 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
     }
   };
 
-  const handleActionSelect = (action: "profiles" | "notifications" | "absents") => {
+  const handleActionSelect = (action: "profiles" | "notifications" | "absents" | "leave_history") => {
     setSelectedAction(action);
     if (action === "profiles") {
       setViewMode("profiles");
@@ -214,6 +291,8 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
       setViewMode("notifications");
     } else if (action === "absents") {
       setViewMode("absents");
+    } else if (action === "leave_history") {
+      setViewMode("leave_history");
     }
   };
 
@@ -309,6 +388,9 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
     setViewMode("menu");
     setError("");
     setSelectedAction(null);
+    setSearchQuery("");
+    setSelectedStudent(null);
+    setSelectedStudentLeaves([]);
   };
 
   const handleLogout = () => {
@@ -332,10 +414,56 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
         return "Send Notification";
       case "absents":
         return "View Leave Applications";
+      case "leave_history":
+        return "Students Leave History";
+      case "student_leave_detail":
+        return `${selectedStudent?.name}'s Leave History`;
       default:
         return "For Teachers Only";
     }
   };
+
+  const handleStudentClick = async (student: StudentWithLeaveCount) => {
+    setSelectedStudent(student);
+    setIsLoading(true);
+    
+    try {
+      const { data: leaves, error } = await supabase
+        .from('leave_applications')
+        .select('*')
+        .eq('student_phone', student.phone)
+        .order('submitted_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      setSelectedStudentLeaves(leaves || []);
+      setViewMode("student_leave_detail");
+    } catch (error) {
+      console.error('Error loading student leave history:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load student leave history. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleBackToLeaveHistory = () => {
+    setViewMode("leave_history");
+    setSelectedStudent(null);
+    setSelectedStudentLeaves([]);
+  };
+
+  const filteredStudentsWithLeaves = studentsWithLeaves.filter(student =>
+    student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    student.class.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    student.division.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    student.phone.includes(searchQuery)
+  );
 
   function getInitials(name: string) {
     return name
@@ -456,6 +584,14 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
             >
               <Calendar size={20} />
               View Leaves
+            </Button>
+            <Button 
+              onClick={() => handleActionSelect("leave_history")}
+              className="w-full flex items-center justify-center gap-2"
+              variant="outline"
+            >
+              <FileText size={20} />
+              View Students Leave History
             </Button>
           </div>
         )}
@@ -650,6 +786,155 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
                     </div>
                   ))}
                 </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {viewMode === "leave_history" && (
+          <div className="mt-2 flex flex-col gap-3">
+            <Button 
+              variant="outline" 
+              onClick={handleBackToMenu} 
+              className="self-start mb-2"
+            >
+              Back to Menu
+            </Button>
+            
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <Input
+                placeholder="Search students..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            <div className="overflow-y-auto max-h-[60vh]">
+              {isLoading ? (
+                <div className="text-center py-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                  <span className="text-sm text-slate-500">Loading students leave history...</span>
+                </div>
+              ) : studentsWithLeaves.length === 0 ? (
+                <div className="text-center py-8">
+                  <FileText className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                  <span className="text-center text-sm text-slate-500">No student profiles available yet.</span>
+                </div>
+              ) : (
+                <>
+                  <div className="text-center text-xs text-green-600 mb-4">
+                    Showing {filteredStudentsWithLeaves.length} of {studentsWithLeaves.length} students
+                  </div>
+                  {filteredStudentsWithLeaves.map((student, idx) => (
+                    <div 
+                      key={student.phone + idx} 
+                      className="flex items-center gap-3 border rounded-xl px-4 py-3 shadow bg-slate-50 cursor-pointer hover:bg-slate-100 transition-colors"
+                      onClick={() => handleStudentClick(student)}
+                    >
+                      <Avatar className="w-12 h-12">
+                        {student.image ? (
+                          <AvatarImage src={student.image} alt={student.name} />
+                        ) : (
+                          <AvatarFallback className="bg-blue-100 text-blue-800">
+                            {getInitials(student.name)}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                      <div className="flex flex-col flex-1">
+                        <span className="font-semibold text-blue-900">{student.name}</span>
+                        <span className="text-sm text-slate-700">
+                          Class: <b>{student.class}</b> | Division: <b>{student.division}</b>
+                        </span>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-sm text-gray-600">Phone: {student.phone}</span>
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                            {student.leaveCount} leaves
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {viewMode === "student_leave_detail" && selectedStudent && (
+          <div className="mt-2 flex flex-col gap-3">
+            <Button 
+              variant="outline" 
+              onClick={handleBackToLeaveHistory} 
+              className="self-start mb-2"
+            >
+              <ArrowLeft size={16} className="mr-2" />
+              Back to Leave History
+            </Button>
+            
+            <div className="border rounded-xl p-4 bg-blue-50 mb-4">
+              <div className="flex items-center gap-3">
+                <Avatar className="w-12 h-12">
+                  {selectedStudent.image ? (
+                    <AvatarImage src={selectedStudent.image} alt={selectedStudent.name} />
+                  ) : (
+                    <AvatarFallback className="bg-blue-100 text-blue-800">
+                      {getInitials(selectedStudent.name)}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <div>
+                  <h3 className="font-semibold text-blue-900">{selectedStudent.name}</h3>
+                  <p className="text-sm text-slate-700">
+                    Class: {selectedStudent.class} | Division: {selectedStudent.division}
+                  </p>
+                  <p className="text-sm text-slate-600">Total Leaves: {selectedStudent.leaveCount}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="overflow-y-auto max-h-[50vh]">
+              {isLoading ? (
+                <div className="text-center py-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                  <span className="text-sm text-slate-500">Loading leave history...</span>
+                </div>
+              ) : selectedStudentLeaves.length === 0 ? (
+                <div className="text-center py-8">
+                  <Calendar className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                  <span className="text-center text-sm text-slate-500">No leave applications found for this student.</span>
+                </div>
+              ) : (
+                selectedStudentLeaves.map((application) => (
+                  <div key={application.id} className="border rounded-xl p-4 mb-4 bg-white shadow-sm">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(application.status)}`}>
+                        {getStatusIcon(application.status)}
+                        {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
+                      </span>
+                      <span className="text-xs text-slate-500">
+                        Submitted: {formatDate(application.submitted_at)}
+                      </span>
+                    </div>
+                    
+                    <div className="text-sm text-slate-700 space-y-1 mb-3">
+                      <p><strong>Days:</strong> {application.number_of_days}</p>
+                      <p><strong>Period:</strong> {formatDate(application.start_date)} to {formatDate(application.return_date)}</p>
+                    </div>
+                    
+                    <div className="mb-3">
+                      <p className="text-sm font-medium text-slate-700 mb-1">Reason:</p>
+                      <p className="text-sm text-slate-600 bg-slate-50 p-2 rounded">{application.reason}</p>
+                    </div>
+
+                    {application.reviewed_at && (
+                      <div className="text-xs text-slate-500">
+                        Reviewed by {application.reviewed_by} on {formatDate(application.reviewed_at)}
+                      </div>
+                    )}
+                  </div>
+                ))
               )}
             </div>
           </div>
