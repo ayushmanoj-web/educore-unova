@@ -264,6 +264,70 @@ const Profile = () => {
     }
   };
 
+  const handleDeleteProfile = async () => {
+    if (!existingProfileId) {
+      toast({
+        title: "No profile to delete",
+        description: "You don't have a profile to delete.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const confirmed = window.confirm("Are you sure you want to delete your profile? This action cannot be undone and you will no longer appear in the app.");
+    if (!confirmed) return;
+
+    setIsLoading(true);
+
+    try {
+      // Delete from Supabase
+      const { error } = await supabase
+        .from('public_profiles')
+        .delete()
+        .eq('id', existingProfileId);
+
+      if (error) {
+        throw error;
+      }
+
+      // Remove from localStorage
+      const profiles = getStoredProfiles();
+      const updatedProfiles = profiles.filter(p => p.phone !== form.phone);
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedProfiles));
+
+      // Clear form
+      setForm({
+        name: "",
+        class: "",
+        division: "",
+        dob: "",
+        phone: "",
+        image: undefined,
+      });
+      setImagePreview(undefined);
+      setImageFileName(undefined);
+      setExistingProfileId(null);
+
+      toast({
+        title: "Profile deleted successfully!",
+        description: "Your profile has been removed from the app.",
+      });
+
+      console.log('Profile deleted successfully');
+      
+    } catch (error: any) {
+      console.error('Error deleting profile:', error);
+      
+      toast({
+        title: "Error deleting profile",
+        description: `Could not delete profile: ${error.message || 'Unknown error'}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   function getInitials(name: string) {
     return name
       .split(" ")
@@ -407,6 +471,17 @@ const Profile = () => {
             >
               {isLoading ? "Saving..." : existingProfileId ? "Update Profile" : "Create Profile"}
             </Button>
+            {existingProfileId && (
+              <Button 
+                variant="destructive"
+                className="w-full mt-2" 
+                type="button"
+                onClick={handleDeleteProfile}
+                disabled={isLoading}
+              >
+                {isLoading ? "Deleting..." : "Delete Profile"}
+              </Button>
+            )}
           </form>
         </CardContent>
       </Card>

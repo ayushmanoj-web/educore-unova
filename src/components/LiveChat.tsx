@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Send, MessageCircle, Users } from "lucide-react";
+import { Send, MessageCircle, Users, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -134,6 +134,18 @@ const LiveChat = () => {
           setMessages(prev => [...prev, payload.new as ChatMessage]);
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'chat_messages',
+        },
+        (payload) => {
+          console.log('Message deleted:', payload.old);
+          setMessages(prev => prev.filter(msg => msg.id !== payload.old.id));
+        }
+      )
       .subscribe();
 
     // Set up real-time subscription for public_profiles
@@ -217,6 +229,37 @@ const LiveChat = () => {
       .slice(0, 2);
   };
 
+  const deleteAllMessages = async () => {
+    const confirmed = window.confirm("Are you sure you want to delete ALL messages for everyone? This action cannot be undone.");
+    if (!confirmed) return;
+
+    try {
+      const { error } = await supabase
+        .from('chat_messages')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
+
+      if (error) {
+        throw error;
+      }
+
+      setMessages([]);
+      toast({
+        title: "All messages deleted",
+        description: "All chat messages have been deleted for everyone.",
+      });
+
+      console.log('All messages deleted successfully');
+    } catch (error) {
+      console.error('Error deleting messages:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete messages. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -236,15 +279,26 @@ const LiveChat = () => {
             Real-time enabled
           </span>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowProfiles(!showProfiles)}
-          className="flex items-center gap-1"
-        >
-          <Users className="w-4 h-4" />
-          Profiles ({profiles.length})
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={deleteAllMessages}
+            className="flex items-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+          >
+            <Trash2 className="w-4 h-4" />
+            Clear All
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowProfiles(!showProfiles)}
+            className="flex items-center gap-1"
+          >
+            <Users className="w-4 h-4" />
+            Profiles ({profiles.length})
+          </Button>
+        </div>
       </div>
 
       {/* Profiles Panel */}
