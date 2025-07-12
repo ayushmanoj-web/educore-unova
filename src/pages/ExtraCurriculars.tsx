@@ -65,12 +65,20 @@ const ExtraCurriculars = () => {
   };
 
   const handleClubClick = (club: Club) => {
-    navigate(`/club-application/${club.id}`, { 
-      state: { clubName: club.name } 
-    });
+    if (approvedClubs.includes(club.id)) {
+      // If approved, go to club chat
+      navigate(`/club-chat/${club.id}`, { 
+        state: { clubName: club.name } 
+      });
+    } else {
+      // If not approved, go to application form
+      navigate(`/club-application/${club.id}`, { 
+        state: { clubName: club.name } 
+      });
+    }
   };
 
-  // Filter clubs based on approval status
+  // Filter clubs based on approval status - only show approved clubs for students
   const displayClubs = approvedClubs.length > 0 
     ? clubs.filter(club => approvedClubs.includes(club.id))
     : clubs;
@@ -124,7 +132,7 @@ const ExtraCurriculars = () => {
               </CardHeader>
               <CardContent>
                 <Button className="w-full">
-                  {approvedClubs.includes(club.id) ? 'Access Club' : 'Apply Now'}
+                  {approvedClubs.includes(club.id) ? 'Access Club Chat' : 'Apply Now'}
                 </Button>
               </CardContent>
             </Card>

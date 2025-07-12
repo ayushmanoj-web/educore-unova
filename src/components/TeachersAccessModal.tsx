@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { User, Phone, Eye, EyeOff, Users, Bell, Calendar, Check, X, Clock, Search, FileText, ArrowLeft } from "lucide-react";
+import { User, Phone, Eye, EyeOff, Users, Bell, Calendar, Check, X, Clock, Search, FileText, ArrowLeft, Star } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -49,7 +49,7 @@ type StudentWithLeaveCount = {
   leaveCount: number;
 };
 
-type ViewMode = "login" | "menu" | "profiles" | "notifications" | "absents" | "leave_history" | "student_leave_detail";
+type ViewMode = "login" | "menu" | "profiles" | "notifications" | "absents" | "leave_history" | "student_leave_detail" | "clubs";
 
 const LOCAL_STORAGE_KEY = "student-profiles";
 const TEACHER_LOGIN_KEY = "teacher-logged-in";
@@ -88,7 +88,7 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
   const [leaveApplications, setLeaveApplications] = useState<LeaveApplication[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState("");
-  const [selectedAction, setSelectedAction] = useState<"profiles" | "notifications" | "absents" | "leave_history" | null>(null);
+  const [selectedAction, setSelectedAction] = useState<"profiles" | "notifications" | "absents" | "leave_history" | "clubs" | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [studentsWithLeaves, setStudentsWithLeaves] = useState<StudentWithLeaveCount[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<StudentWithLeaveCount | null>(null);
@@ -283,7 +283,7 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
     }
   };
 
-  const handleActionSelect = (action: "profiles" | "notifications" | "absents" | "leave_history") => {
+  const handleActionSelect = (action: "profiles" | "notifications" | "absents" | "leave_history" | "clubs") => {
     setSelectedAction(action);
     if (action === "profiles") {
       setViewMode("profiles");
@@ -293,6 +293,8 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
       setViewMode("absents");
     } else if (action === "leave_history") {
       setViewMode("leave_history");
+    } else if (action === "clubs") {
+      setViewMode("clubs");
     }
   };
 
@@ -418,6 +420,8 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
         return "Students Leave History";
       case "student_leave_detail":
         return `${selectedStudent?.name}'s Leave History`;
+      case "clubs":
+        return "Club Management";
       default:
         return "For Teachers Only";
     }
@@ -592,6 +596,14 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
             >
               <FileText size={20} />
               View Students Leave History
+            </Button>
+            <Button 
+              onClick={() => handleActionSelect("clubs")}
+              className="w-full flex items-center justify-center gap-2"
+              variant="outline"
+            >
+              <Star size={20} />
+              Club Management
             </Button>
           </div>
         )}
@@ -858,6 +870,45 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
                   ))}
                 </>
               )}
+            </div>
+          </div>
+        )}
+
+        {viewMode === "clubs" && (
+          <div className="mt-2 flex flex-col gap-3">
+            <Button 
+              variant="outline" 
+              onClick={handleBackToMenu} 
+              className="self-start mb-2"
+            >
+              Back to Menu
+            </Button>
+            
+            <div className="grid grid-cols-1 gap-3">
+              {[
+                { id: "little-kites", name: "Little Kites" },
+                { id: "spc", name: "SPC" },
+                { id: "jrc", name: "JRC" },
+                { id: "maths-club", name: "Maths Club" },
+                { id: "media-club", name: "Media Club" },
+                { id: "hindi-club", name: "Hindi Club" },
+                { id: "ss-club", name: "SS Club" },
+                { id: "scout-guides", name: "Scout and Guides" },
+                { id: "science-club", name: "Science Club" }
+              ].map((club) => (
+                <Button 
+                  key={club.id}
+                  onClick={() => {
+                    handleOpenChange(false);
+                    window.location.href = `/club-management/${club.id}`;
+                  }}
+                  className="w-full flex items-center justify-center gap-2"
+                  variant="outline"
+                >
+                  <Star size={20} />
+                  {club.name}
+                </Button>
+              ))}
             </div>
           </div>
         )}
