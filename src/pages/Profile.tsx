@@ -290,10 +290,13 @@ const Profile = () => {
         throw error;
       }
 
-      // Remove from localStorage
+      // Remove from localStorage - clear all profile data across devices
       const profiles = getStoredProfiles();
       const updatedProfiles = profiles.filter(p => p.phone !== form.phone);
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedProfiles));
+      
+      // Also clear the studentProfile data used by other parts of the app
+      localStorage.removeItem('studentProfile');
 
       // Clear form
       setForm({

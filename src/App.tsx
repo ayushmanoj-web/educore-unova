@@ -17,6 +17,10 @@ import Leave from "./pages/Leave";
 import TeacherChat from "./pages/TeacherChat";
 import Progress from "./pages/Progress";
 import Attendance from "./pages/Attendance";
+import ExtraCurriculars from "./pages/ExtraCurriculars";
+import ClubApplication from "./pages/ClubApplication";
+import ClubApplications from "./pages/ClubApplications";
+import ClubChat from "./pages/ClubChat";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +44,10 @@ const App = () => (
             <Route path="/teacher-chat" element={<TeacherChat />} />
             <Route path="/progress" element={<Progress />} />
             <Route path="/attendance" element={<Attendance />} />
+            <Route path="/extra-curriculars" element={<ExtraCurriculars />} />
+            <Route path="/club-application/:clubId" element={<ClubApplication />} />
+            <Route path="/club-applications/:clubId" element={<ClubApplications />} />
+            <Route path="/club-chat/:clubId" element={<ClubChat />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <BottomNav />

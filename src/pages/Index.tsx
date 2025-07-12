@@ -13,7 +13,7 @@ const Index = () => {
       <main className="max-w-6xl mx-auto">
         <DashboardHero />
         {/* Action Buttons */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
           <Link to="/teacher-chat">
             <Button className="w-full h-16 text-lg font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-lg">
               <MessageCircle className="mr-3 h-6 w-6" />
@@ -30,6 +30,12 @@ const Index = () => {
             <Button className="w-full h-16 text-lg font-semibold bg-purple-600 hover:bg-purple-700 text-white shadow-lg">
               <Calendar className="mr-3 h-6 w-6" />
               Your Attendance
+            </Button>
+          </Link>
+          <Link to="/extra-curriculars">
+            <Button className="w-full h-16 text-lg font-semibold bg-orange-600 hover:bg-orange-700 text-white shadow-lg">
+              <Calendar className="mr-3 h-6 w-6" />
+              Extra Curriculars
             </Button>
           </Link>
         </div>

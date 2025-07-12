@@ -44,6 +44,127 @@ export type Database = {
         }
         Relationships: []
       }
+      club_applications: {
+        Row: {
+          application_details: string
+          club_id: string
+          created_at: string
+          id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          student_class: string
+          student_division: string
+          student_id: string
+          student_name: string
+          student_phone: string
+          submitted_at: string
+        }
+        Insert: {
+          application_details: string
+          club_id: string
+          created_at?: string
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          student_class: string
+          student_division: string
+          student_id: string
+          student_name: string
+          student_phone: string
+          submitted_at?: string
+        }
+        Update: {
+          application_details?: string
+          club_id?: string
+          created_at?: string
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          student_class?: string
+          student_division?: string
+          student_id?: string
+          student_name?: string
+          student_phone?: string
+          submitted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_applications_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_chat_messages: {
+        Row: {
+          club_id: string
+          created_at: string
+          id: string
+          message: string
+          sender_id: string
+          sender_image: string | null
+          sender_name: string
+          timestamp: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          id?: string
+          message: string
+          sender_id: string
+          sender_image?: string | null
+          sender_name: string
+          timestamp?: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          sender_id?: string
+          sender_image?: string | null
+          sender_name?: string
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_chat_messages_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clubs: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       homework_status: {
         Row: {
           assignment_id: string
