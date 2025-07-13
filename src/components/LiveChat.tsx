@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Send, ArrowLeft, Users, MoreVertical, Phone, VideoIcon, Search } from "lucide-react";
+import { Send, MessageCircle, Users, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -24,8 +24,10 @@ type Profile = {
 const LiveChat = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
+  const [senderPhone, setSenderPhone] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [showChat, setShowChat] = useState(false);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [showProfiles, setShowProfiles] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Get current user from localStorage profiles
@@ -40,6 +42,7 @@ const LiveChat = () => {
 
   useEffect(() => {
     fetchMessages();
+    fetchProfiles();
     setupRealtime();
   }, []);
 
@@ -75,6 +78,46 @@ const LiveChat = () => {
     }
   };
 
+  const fetchProfiles = async () => {
+    try {
+      console.log('Fetching profiles...');
+      
+      // Get stored profiles from localStorage
+      const storedProfiles = localStorage.getItem("student-profiles");
+      let localProfiles: Profile[] = [];
+      
+      if (storedProfiles) {
+        const parsed = JSON.parse(storedProfiles);
+        console.log('Local profiles found:', parsed);
+        localProfiles = parsed.map((p: any) => ({
+          name: p.name,
+          image: p.image || null,
+          phone: p.phone
+        }));
+      }
+
+      // Get profiles from Supabase public_profiles table
+      const { data: supabaseProfiles, error } = await supabase
+        .from('public_profiles')
+        .select('name, image, phone');
+
+      console.log('Supabase profiles:', supabaseProfiles, 'Error:', error);
+
+      let allProfiles = [...localProfiles];
+      
+      if (supabaseProfiles && !error) {
+        const phoneNumbers = new Set(localProfiles.map(p => p.phone));
+        const uniqueSupabaseProfiles = supabaseProfiles.filter(p => !phoneNumbers.has(p.phone));
+        allProfiles = [...allProfiles, ...uniqueSupabaseProfiles];
+      }
+
+      console.log('All profiles combined:', allProfiles);
+      setProfiles(allProfiles);
+    } catch (error) {
+      console.error('Error fetching profiles:', error);
+    }
+  };
+
   const setupRealtime = () => {
     // Set up real-time subscription for chat messages
     const messagesChannel = supabase
@@ -105,8 +148,27 @@ const LiveChat = () => {
       )
       .subscribe();
 
+    // Set up real-time subscription for public_profiles
+    const profilesChannel = supabase
+      .channel('public_profiles_realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'public_profiles',
+        },
+        (payload) => {
+          console.log('Profile change detected:', payload);
+          // Refresh profiles when any profile changes
+          fetchProfiles();
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(messagesChannel);
+      supabase.removeChannel(profilesChannel);
     };
   };
 
@@ -149,15 +211,14 @@ const LiveChat = () => {
     }
   };
 
+  const getProfileByPhone = (phone: string | null) => {
+    if (!phone) return null;
+    return profiles.find(p => p.phone === phone);
+  };
+
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
-    const now = new Date();
-    const isToday = date.toDateString() === now.toDateString();
-    
-    if (isToday) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-    return date.toLocaleDateString();
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   const getInitials = (name: string) => {
@@ -168,158 +229,138 @@ const LiveChat = () => {
       .slice(0, 2);
   };
 
-  const getCurrentUser_Display = getCurrentUser();
-  const latestMessage = messages[messages.length - 1];
+  const deleteAllMessages = async () => {
+    const confirmed = window.confirm("Are you sure you want to delete ALL messages for everyone? This action cannot be undone.");
+    if (!confirmed) return;
+
+    try {
+      const { error } = await supabase
+        .from('chat_messages')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
+
+      if (error) {
+        throw error;
+      }
+
+      setMessages([]);
+      toast({
+        title: "All messages deleted",
+        description: "All chat messages have been deleted for everyone.",
+      });
+
+      console.log('All messages deleted successfully');
+    } catch (error) {
+      console.error('Error deleting messages:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete messages. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
-  if (!showChat) {
-    // Chat List View (WhatsApp-like)
-    return (
-      <div className="flex flex-col h-[600px] bg-white rounded-lg shadow-lg border overflow-hidden">
-        {/* Header */}
-        <div className="bg-green-600 text-white p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-medium">Chats</h1>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" className="text-white hover:bg-green-700">
-                <Search className="w-5 h-5" />
-              </Button>
-              <Button variant="ghost" size="sm" className="text-white hover:bg-green-700">
-                <MoreVertical className="w-5 h-5" />
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Search Bar */}
-        <div className="p-3 border-b bg-gray-50">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input 
-              placeholder="Search or start new chat" 
-              className="pl-10 bg-white border-gray-200"
-            />
-          </div>
-        </div>
-
-        {/* Chat List */}
-        <div className="flex-1 overflow-y-auto">
-          <div 
-            className="flex items-center p-4 hover:bg-gray-50 cursor-pointer border-b"
-            onClick={() => setShowChat(true)}
-          >
-            <Avatar className="w-12 h-12 mr-3">
-              <AvatarFallback className="bg-green-100 text-green-800 text-lg font-medium">
-                CG
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <h3 className="font-medium text-gray-900 truncate">Class Group</h3>
-                <span className="text-xs text-gray-500">
-                  {latestMessage ? formatTimestamp(latestMessage.timestamp) : ""}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-600 truncate">
-                  {latestMessage 
-                    ? `${latestMessage.sender_name}: ${latestMessage.message}`
-                    : "Tap to start messaging"
-                  }
-                </p>
-                {messages.length > 0 && (
-                  <div className="bg-green-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center ml-2">
-                    {messages.length > 99 ? "99+" : messages.length}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Chat View
   return (
-    <div className="flex flex-col h-[600px] bg-white rounded-lg shadow-lg border overflow-hidden">
-      {/* Chat Header */}
-      <div className="bg-green-600 text-white p-3">
-        <div className="flex items-center gap-3">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="text-white hover:bg-green-700 p-1"
-            onClick={() => setShowChat(false)}
+    <div className="flex flex-col h-[600px] bg-white rounded-lg shadow-lg border">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b bg-blue-50">
+        <div className="flex items-center gap-2">
+          <MessageCircle className="w-5 h-5 text-blue-600" />
+          <h3 className="font-semibold text-blue-800">Live Chat</h3>
+          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+            Real-time enabled
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={deleteAllMessages}
+            className="flex items-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <Trash2 className="w-4 h-4" />
+            Clear All
           </Button>
-          <Avatar className="w-9 h-9">
-            <AvatarFallback className="bg-white text-green-600 font-medium">
-              CG
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1">
-            <h3 className="font-medium">Class Group</h3>
-            <p className="text-xs text-green-100">Online</p>
-          </div>
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" className="text-white hover:bg-green-700 p-2">
-              <VideoIcon className="w-5 h-5" />
-            </Button>
-            <Button variant="ghost" size="sm" className="text-white hover:bg-green-700 p-2">
-              <Phone className="w-5 h-5" />
-            </Button>
-            <Button variant="ghost" size="sm" className="text-white hover:bg-green-700 p-2">
-              <MoreVertical className="w-5 h-5" />
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowProfiles(!showProfiles)}
+            className="flex items-center gap-1"
+          >
+            <Users className="w-4 h-4" />
+            Profiles ({profiles.length})
+          </Button>
         </div>
       </div>
+
+      {/* Profiles Panel */}
+      {showProfiles && (
+        <div className="p-4 border-b bg-gray-50 max-h-32 overflow-y-auto">
+          <div className="grid grid-cols-2 gap-2">
+            {profiles.map((profile, index) => (
+              <div key={`${profile.phone}-${index}`} className="flex items-center gap-2 text-sm">
+                <Avatar className="w-6 h-6">
+                  {profile.image ? (
+                    <AvatarImage src={profile.image} alt={profile.name} />
+                  ) : (
+                    <AvatarFallback className="text-xs bg-blue-100 text-blue-800">
+                      {getInitials(profile.name)}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <span className="truncate">{profile.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Messages */}
-      <div 
-        className="flex-1 overflow-y-auto p-4 space-y-3"
-        style={{
-          backgroundImage: "url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0icGF0dGVybiIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIj48cmVjdCB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiNmOWY5ZjkiLz48Y2lyY2xlIGN4PSIxMCIgY3k9IjEwIiByPSIxIiBmaWxsPSIjZjBmMGYwIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI3BhdHRlcm4pIi8+PC9zdmc+')",
-        }}
-      >
+      <div className="flex-1 p-4 overflow-y-auto space-y-3">
         {messages.length === 0 ? (
           <div className="text-center text-gray-500 py-8">
-            <Users className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-            <p className="text-sm">Messages you send to this group will be secured with end-to-end encryption.</p>
+            <MessageCircle className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+            <p>No messages yet. Start the conversation!</p>
           </div>
         ) : (
           messages.map((message) => {
-            const isCurrentUser = getCurrentUser_Display?.phone === message.sender_phone;
+            const profile = getProfileByPhone(message.sender_phone) || {
+              name: message.sender_name,
+              image: message.sender_image,
+              phone: message.sender_phone || ''
+            };
             
             return (
-              <div key={message.id} className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-xs lg:max-w-md px-3 py-2 rounded-lg ${
-                  isCurrentUser 
-                    ? 'bg-green-500 text-white' 
-                    : 'bg-white border shadow-sm'
-                }`}>
-                  {!isCurrentUser && (
-                    <p className="text-xs font-medium text-green-600 mb-1">
-                      {message.sender_name}
-                    </p>
+              <div key={message.id} className="flex items-start gap-3">
+                <Avatar className="w-8 h-8">
+                  {profile.image ? (
+                    <AvatarImage src={profile.image} alt={profile.name} />
+                  ) : (
+                    <AvatarFallback className="text-xs bg-blue-100 text-blue-800">
+                      {getInitials(profile.name)}
+                    </AvatarFallback>
                   )}
-                  <p className="text-sm break-words">{message.message}</p>
-                  <p className={`text-xs mt-1 ${
-                    isCurrentUser ? 'text-green-100' : 'text-gray-500'
-                  }`}>
-                    {formatTimestamp(message.timestamp)}
-                  </p>
+                </Avatar>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-medium text-sm text-gray-900">
+                      {profile.name}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {formatTimestamp(message.timestamp)}
+                    </span>
+                  </div>
+                  <div className="bg-gray-100 rounded-lg px-3 py-2 text-sm">
+                    {message.message}
+                  </div>
                 </div>
               </div>
             );
@@ -329,25 +370,19 @@ const LiveChat = () => {
       </div>
 
       {/* Message Input */}
-      <div className="p-3 bg-gray-50 border-t">
-        <form onSubmit={sendMessage} className="flex items-center gap-2">
-          <div className="flex-1 bg-white rounded-full border">
-            <Input
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Type a message"
-              className="border-0 rounded-full focus:ring-0 focus:border-0"
-            />
-          </div>
-          <Button 
-            type="submit" 
-            size="sm" 
-            className="rounded-full bg-green-600 hover:bg-green-700 w-10 h-10 p-0"
-          >
+      <form onSubmit={sendMessage} className="p-4 border-t bg-gray-50">
+        <div className="flex gap-2">
+          <Input
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder="Type your message..."
+            className="flex-1"
+          />
+          <Button type="submit" size="sm">
             <Send className="w-4 h-4" />
           </Button>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
   );
 };
