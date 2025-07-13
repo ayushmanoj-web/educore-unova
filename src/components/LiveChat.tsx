@@ -8,10 +8,9 @@ import { toast } from "@/components/ui/use-toast";
 
 type ChatMessage = {
   id: string;
-  message: string;
-  sender_name: string;
-  sender_image: string | null;
-  sender_phone: string | null;
+  text: string | null;
+  audio_url: string | null;
+  sender_phone: string;
   timestamp: string;
 };
 
@@ -57,7 +56,7 @@ const LiveChat = () => {
   const fetchMessages = async () => {
     try {
       const { data, error } = await supabase
-        .from('chat_messages')
+        .from('messages')
         .select('*')
         .order('timestamp', { ascending: true });
 
@@ -119,15 +118,15 @@ const LiveChat = () => {
   };
 
   const setupRealtime = () => {
-    // Set up real-time subscription for chat messages
+    // Set up real-time subscription for messages
     const messagesChannel = supabase
-      .channel('chat_messages_realtime')
+      .channel('messages_realtime')
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'chat_messages',
+          table: 'messages',
         },
         (payload) => {
           console.log('New message received:', payload.new);
@@ -139,7 +138,7 @@ const LiveChat = () => {
         {
           event: 'DELETE',
           schema: 'public',
-          table: 'chat_messages',
+          table: 'messages',
         },
         (payload) => {
           console.log('Message deleted:', payload.old);
@@ -187,12 +186,10 @@ const LiveChat = () => {
 
     try {
       const { error } = await supabase
-        .from('chat_messages')
+        .from('messages')
         .insert({
-          message: newMessage.trim(),
-          sender_name: currentUser.name,
+          text: newMessage.trim(),
           sender_phone: currentUser.phone,
-          sender_image: currentUser.image || null,
         });
 
       if (error) {
@@ -235,7 +232,7 @@ const LiveChat = () => {
 
     try {
       const { error } = await supabase
-        .from('chat_messages')
+        .from('messages')
         .delete()
         .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
 
@@ -333,9 +330,9 @@ const LiveChat = () => {
         ) : (
           messages.map((message) => {
             const profile = getProfileByPhone(message.sender_phone) || {
-              name: message.sender_name,
-              image: message.sender_image,
-              phone: message.sender_phone || ''
+              name: 'Unknown User',
+              image: null,
+              phone: message.sender_phone
             };
             
             return (
@@ -359,7 +356,7 @@ const LiveChat = () => {
                     </span>
                   </div>
                   <div className="bg-gray-100 rounded-lg px-3 py-2 text-sm">
-                    {message.message}
+                    {message.text || (message.audio_url && "🎵 Audio message")}
                   </div>
                 </div>
               </div>
