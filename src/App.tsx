@@ -14,6 +14,7 @@ import BottomNav from "./components/BottomNav";
 import Timetable from "./pages/Timetable";
 import LiveChatPage from "./pages/LiveChatPage";
 import WhatsAppChatPage from "./pages/WhatsAppChatPage";
+import ChatListPage from "./pages/ChatListPage";
 import Leave from "./pages/Leave";
 import TeacherChat from "./pages/TeacherChat";
 import Progress from "./pages/Progress";
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/timetable" element={<Timetable />} />
             <Route path="/chat" element={<LiveChatPage />} />
             <Route path="/whatsapp-chat" element={<WhatsAppChatPage />} />
+            <Route path="/chats" element={<ChatListPage />} />
             <Route path="/leave" element={<Leave />} />
             <Route path="/teacher-chat" element={<TeacherChat />} />
             <Route path="/progress" element={<Progress />} />
