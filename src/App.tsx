@@ -3,28 +3,49 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import Downloads from "./pages/Downloads";
-import Notifications from "./pages/Notifications";
-import Profile from "./pages/Profile";
-import Courses from "./pages/Courses";
-import Textbooks from "./pages/Textbooks";
-import BottomNav from "./components/BottomNav";
-import Timetable from "./pages/Timetable";
-import LiveChatPage from "./pages/LiveChatPage";
-import WhatsAppChatPage from "./pages/WhatsAppChatPage";
-import ChatListPage from "./pages/ChatListPage";
-import Leave from "./pages/Leave";
-import TeacherChat from "./pages/TeacherChat";
-import Progress from "./pages/Progress";
-import Attendance from "./pages/Attendance";
-import ExtraCurriculars from "./pages/ExtraCurriculars";
-import ClubApplication from "./pages/ClubApplication";
-import ClubApplications from "./pages/ClubApplications";
-import ClubChat from "./pages/ClubChat";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import Feed from "./pages/Feed";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import ProfilePage from "./pages/ProfilePage";
+import SocialBottomNav from "./components/SocialBottomNav";
+import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
+
+const AppContent = () => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Routes>
+        <Route path="/signup" element={<Signup />} />
+        <Route path="*" element={<Login />} />
+      </Routes>
+    );
+  }
+
+  return (
+    <div className="pb-16 min-h-screen relative">
+      <Routes>
+        <Route path="/" element={<Feed />} />
+        <Route path="/search" element={<div className="p-4">Search page coming soon!</div>} />
+        <Route path="/create" element={<div className="p-4">Create post coming soon!</div>} />
+        <Route path="/activity" element={<div className="p-4">Activity page coming soon!</div>} />
+        <Route path="/profile" element={<ProfilePage />} />
+      </Routes>
+      <SocialBottomNav />
+    </div>
+  );
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -32,30 +53,9 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <div className="pb-16 min-h-screen relative">
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/courses" element={<Courses />} />
-            <Route path="/downloads" element={<Downloads />} />
-            <Route path="/notifications" element={<Notifications />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/textbooks" element={<Textbooks />} />
-            <Route path="/timetable" element={<Timetable />} />
-            <Route path="/chat" element={<LiveChatPage />} />
-            <Route path="/whatsapp-chat" element={<WhatsAppChatPage />} />
-            <Route path="/chats" element={<ChatListPage />} />
-            <Route path="/leave" element={<Leave />} />
-            <Route path="/teacher-chat" element={<TeacherChat />} />
-            <Route path="/progress" element={<Progress />} />
-            <Route path="/attendance" element={<Attendance />} />
-            <Route path="/extra-curriculars" element={<ExtraCurriculars />} />
-            <Route path="/club-application/:clubId" element={<ClubApplication />} />
-            <Route path="/club-applications/:clubId" element={<ClubApplications />} />
-            <Route path="/club-chat/:clubId" element={<ClubChat />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          <BottomNav />
-        </div>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
