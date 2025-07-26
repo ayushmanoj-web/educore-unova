@@ -1,8 +1,9 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "socialapp-instagram-clone",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "description": "Instagram-like social media app built with React, TypeScript, and Supabase",
   "scripts": {
     "dev": "npx vite",
     "build": "npx vite build",
