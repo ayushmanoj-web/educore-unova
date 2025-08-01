@@ -171,16 +171,10 @@ const ChatWindow = ({ chatRoom, currentUser, userProfiles }: ChatWindowProps) =>
 
       // Send message with file
       const { error } = await supabase
-        .from('chat_messages')
+        .from('messages')
         .insert({
-          chat_room_id: chatRoom.id,
-          sender_id: currentUser.id,
-          content: file.name,
-          message_type: messageType,
-          file_url: publicUrl,
-          file_name: file.name,
-          file_size: file.size,
-          file_type: file.type
+          text: `File: ${file.name}`,
+          sender_phone: currentUser.phone || currentUser.email || 'unknown'
         });
 
       if (error) throw error;
@@ -345,15 +339,16 @@ const ChatWindow = ({ chatRoom, currentUser, userProfiles }: ChatWindowProps) =>
         </form>
       </div>
 
-      {/* Voice Recorder Modal */}
+      {/* Voice Recorder Modal - TODO: Implement VoiceRecorder component */}
       {showVoiceRecorder && (
-        <VoiceRecorder
-          onClose={() => setShowVoiceRecorder(false)}
-          onSendVoice={(audioBlob) => {
-            // Handle voice message
-            setShowVoiceRecorder(false);
-          }}
-        />
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg">
+            <p>Voice recording feature coming soon!</p>
+            <Button onClick={() => setShowVoiceRecorder(false)} className="mt-4">
+              Close
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );

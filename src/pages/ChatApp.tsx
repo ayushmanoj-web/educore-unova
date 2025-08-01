@@ -33,7 +33,7 @@ export type UserProfile = {
 
 const ChatApp = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [selectedChatRoom, setSelectedChatroom] = useState<ChatRoom | null>(null);
+  const [selectedChatRoom, setSelectedChatRoom] = useState<ChatRoom | null>(null);
   const [chatRooms, setChatRooms] = useState<ChatRoom[]>([]);
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>([]);
   const navigate = useNavigate();
@@ -173,16 +173,15 @@ const ChatApp = () => {
           chat_rooms!inner (
             id,
             name,
-            is_group
+            description,
+            is_group,
+            created_by,
+            created_at,
+            updated_at
           )
         `)
         .eq('user_id', user.id)
-        .in('chat_room_id', 
-          supabase
-            .from('chat_participants')
-            .select('chat_room_id')
-            .eq('user_id', targetUserId)
-        );
+        .eq('user_id', user.id);
 
       if (checkError) throw checkError;
 
@@ -192,7 +191,7 @@ const ChatApp = () => {
       if (directChat) {
         // Chat already exists, select it
         const room = directChat.chat_rooms;
-        setSelectedChatroom(room);
+        setSelectedChatRoom(room);
         return;
       }
 
@@ -224,7 +223,7 @@ const ChatApp = () => {
 
       if (participantsError) throw participantsError;
 
-      setSelectedChatroom(newRoom);
+      setSelectedChatRoom(newRoom);
       
       toast({
         title: "New chat created",
@@ -255,7 +254,7 @@ const ChatApp = () => {
         chatRooms={chatRooms}
         userProfiles={userProfiles}
         selectedChatRoom={selectedChatRoom}
-        onSelectChatRoom={setSelectedChatroom}
+        onSelectChatRoom={setSelectedChatRoom}
         onCreateNewChat={createNewChat}
         currentUser={user}
       />
