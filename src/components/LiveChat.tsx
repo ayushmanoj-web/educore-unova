@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Send, MessageCircle, Users, Trash2 } from "lucide-react";
@@ -23,10 +24,10 @@ type Profile = {
 const LiveChat = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  const [senderPhone, setSenderPhone] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [showProfiles, setShowProfiles] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Get current user from localStorage profiles
@@ -42,7 +43,11 @@ const LiveChat = () => {
   useEffect(() => {
     fetchMessages();
     fetchProfiles();
-    setupRealtime();
+    const cleanup = setupRealtime();
+    
+    return () => {
+      if (cleanup) cleanup();
+    };
   }, []);
 
   useEffect(() => {
@@ -55,18 +60,23 @@ const LiveChat = () => {
 
   const fetchMessages = async () => {
     try {
+      console.log('Fetching messages...');
       const { data, error } = await supabase
         .from('messages')
         .select('*')
         .order('timestamp', { ascending: true });
 
       if (error) {
+        console.error('Error fetching messages:', error);
         throw error;
       }
 
+      console.log('Messages fetched:', data?.length || 0);
       setMessages(data || []);
+      setConnectionStatus('connected');
     } catch (error) {
       console.error('Error fetching messages:', error);
+      setConnectionStatus('error');
       toast({
         title: "Error",
         description: "Failed to load chat messages.",
@@ -83,12 +93,12 @@ const LiveChat = () => {
       
       // Get stored profiles from localStorage
       const storedProfiles = localStorage.getItem("student-profiles");
-      let localProfiles: Profile[] = [];
+      let allProfiles: Profile[] = [];
       
       if (storedProfiles) {
         const parsed = JSON.parse(storedProfiles);
         console.log('Local profiles found:', parsed);
-        localProfiles = parsed.map((p: any) => ({
+        allProfiles = parsed.map((p: any) => ({
           name: p.name,
           image: p.image || null,
           phone: p.phone
@@ -100,12 +110,12 @@ const LiveChat = () => {
         .from('public_profiles')
         .select('name, image, phone');
 
-      console.log('Supabase profiles:', supabaseProfiles, 'Error:', error);
-
-      let allProfiles = [...localProfiles];
-      
-      if (supabaseProfiles && !error) {
-        const phoneNumbers = new Set(localProfiles.map(p => p.phone));
+      if (error) {
+        console.error('Error fetching Supabase profiles:', error);
+      } else if (supabaseProfiles) {
+        console.log('Supabase profiles:', supabaseProfiles);
+        // Add unique Supabase profiles (avoid duplicates based on phone)
+        const phoneNumbers = new Set(allProfiles.map(p => p.phone));
         const uniqueSupabaseProfiles = supabaseProfiles.filter(p => !phoneNumbers.has(p.phone));
         allProfiles = [...allProfiles, ...uniqueSupabaseProfiles];
       }
@@ -118,6 +128,8 @@ const LiveChat = () => {
   };
 
   const setupRealtime = () => {
+    console.log('Setting up real-time subscriptions...');
+    
     // Set up real-time subscription for messages
     const messagesChannel = supabase
       .channel('messages_realtime')
@@ -131,6 +143,7 @@ const LiveChat = () => {
         (payload) => {
           console.log('New message received:', payload.new);
           setMessages(prev => [...prev, payload.new as ChatMessage]);
+          setConnectionStatus('connected');
         }
       )
       .on(
@@ -145,7 +158,14 @@ const LiveChat = () => {
           setMessages(prev => prev.filter(msg => msg.id !== payload.old.id));
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Messages subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          setConnectionStatus('connected');
+        } else if (status === 'CHANNEL_ERROR') {
+          setConnectionStatus('error');
+        }
+      });
 
     // Set up real-time subscription for public_profiles
     const profilesChannel = supabase
@@ -153,19 +173,21 @@ const LiveChat = () => {
       .on(
         'postgres_changes',
         {
-          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          event: '*',
           schema: 'public',
           table: 'public_profiles',
         },
         (payload) => {
           console.log('Profile change detected:', payload);
-          // Refresh profiles when any profile changes
           fetchProfiles();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Profiles subscription status:', status);
+      });
 
     return () => {
+      console.log('Cleaning up real-time subscriptions...');
       supabase.removeChannel(messagesChannel);
       supabase.removeChannel(profilesChannel);
     };
@@ -185,6 +207,8 @@ const LiveChat = () => {
     }
 
     try {
+      console.log('Sending message:', newMessage, 'from:', currentUser.phone);
+      
       const { error } = await supabase
         .from('messages')
         .insert({
@@ -193,6 +217,7 @@ const LiveChat = () => {
         });
 
       if (error) {
+        console.error('Error sending message:', error);
         throw error;
       }
 
@@ -210,7 +235,9 @@ const LiveChat = () => {
 
   const getProfileByPhone = (phone: string | null) => {
     if (!phone) return null;
-    return profiles.find(p => p.phone === phone);
+    const profile = profiles.find(p => p.phone === phone);
+    console.log('Looking for profile with phone:', phone, 'found:', profile);
+    return profile;
   };
 
   const formatTimestamp = (timestamp: string) => {
@@ -234,7 +261,7 @@ const LiveChat = () => {
       const { error } = await supabase
         .from('messages')
         .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
+        .neq('id', '00000000-0000-0000-0000-000000000000');
 
       if (error) {
         throw error;
@@ -257,6 +284,24 @@ const LiveChat = () => {
     }
   };
 
+  const getConnectionStatusColor = () => {
+    switch (connectionStatus) {
+      case 'connected': return 'bg-green-100 text-green-800';
+      case 'connecting': return 'bg-yellow-100 text-yellow-800';
+      case 'error': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getConnectionStatusText = () => {
+    switch (connectionStatus) {
+      case 'connected': return 'Connected';
+      case 'connecting': return 'Connecting...';
+      case 'error': return 'Connection Error';
+      default: return 'Unknown';
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -272,8 +317,8 @@ const LiveChat = () => {
         <div className="flex items-center gap-2">
           <MessageCircle className="w-5 h-5 text-blue-600" />
           <h3 className="font-semibold text-blue-800">Live Chat</h3>
-          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-            Real-time enabled
+          <span className={`text-xs px-2 py-1 rounded-full ${getConnectionStatusColor()}`}>
+            {getConnectionStatusText()}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -301,22 +346,27 @@ const LiveChat = () => {
       {/* Profiles Panel */}
       {showProfiles && (
         <div className="p-4 border-b bg-gray-50 max-h-32 overflow-y-auto">
-          <div className="grid grid-cols-2 gap-2">
-            {profiles.map((profile, index) => (
-              <div key={`${profile.phone}-${index}`} className="flex items-center gap-2 text-sm">
-                <Avatar className="w-6 h-6">
-                  {profile.image ? (
-                    <AvatarImage src={profile.image} alt={profile.name} />
-                  ) : (
-                    <AvatarFallback className="text-xs bg-blue-100 text-blue-800">
-                      {getInitials(profile.name)}
-                    </AvatarFallback>
-                  )}
-                </Avatar>
-                <span className="truncate">{profile.name}</span>
-              </div>
-            ))}
-          </div>
+          {profiles.length === 0 ? (
+            <p className="text-sm text-gray-500">No profiles found. Make sure to set up your profile first.</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              {profiles.map((profile, index) => (
+                <div key={`${profile.phone}-${index}`} className="flex items-center gap-2 text-sm">
+                  <Avatar className="w-6 h-6">
+                    {profile.image ? (
+                      <AvatarImage src={profile.image} alt={profile.name} />
+                    ) : (
+                      <AvatarFallback className="text-xs bg-blue-100 text-blue-800">
+                        {getInitials(profile.name)}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <span className="truncate">{profile.name}</span>
+                  <span className="text-xs text-gray-400">({profile.phone})</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -330,7 +380,7 @@ const LiveChat = () => {
         ) : (
           messages.map((message) => {
             const profile = getProfileByPhone(message.sender_phone) || {
-              name: 'Unknown User',
+              name: `User (${message.sender_phone})`,
               image: null,
               phone: message.sender_phone
             };
@@ -374,11 +424,21 @@ const LiveChat = () => {
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Type your message..."
             className="flex-1"
+            disabled={connectionStatus === 'error'}
           />
-          <Button type="submit" size="sm">
+          <Button 
+            type="submit" 
+            size="sm" 
+            disabled={connectionStatus === 'error' || !newMessage.trim()}
+          >
             <Send className="w-4 h-4" />
           </Button>
         </div>
+        {connectionStatus === 'error' && (
+          <p className="text-xs text-red-600 mt-1">
+            Connection error. Please refresh the page to try again.
+          </p>
+        )}
       </form>
     </div>
   );
