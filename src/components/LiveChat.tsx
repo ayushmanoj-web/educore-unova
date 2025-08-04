@@ -91,39 +91,57 @@ const LiveChat = () => {
     try {
       console.log('Fetching profiles...');
       
-      // Get stored profiles from localStorage
-      const storedProfiles = localStorage.getItem("student-profiles");
-      let allProfiles: Profile[] = [];
-      
-      if (storedProfiles) {
-        const parsed = JSON.parse(storedProfiles);
-        console.log('Local profiles found:', parsed);
-        allProfiles = parsed.map((p: any) => ({
-          name: p.name,
-          image: p.image || null,
-          phone: p.phone
-        }));
-      }
-
-      // Get profiles from Supabase public_profiles table
+      // Always prioritize Supabase profiles as the source of truth
       const { data: supabaseProfiles, error } = await supabase
         .from('public_profiles')
         .select('name, image, phone');
 
       if (error) {
         console.error('Error fetching Supabase profiles:', error);
-      } else if (supabaseProfiles) {
-        console.log('Supabase profiles:', supabaseProfiles);
-        // Add unique Supabase profiles (avoid duplicates based on phone)
-        const phoneNumbers = new Set(allProfiles.map(p => p.phone));
-        const uniqueSupabaseProfiles = supabaseProfiles.filter(p => !phoneNumbers.has(p.phone));
-        allProfiles = [...allProfiles, ...uniqueSupabaseProfiles];
+        setConnectionStatus('error');
+        return;
+      }
+
+      let allProfiles: Profile[] = [];
+
+      // Add Supabase profiles first
+      if (supabaseProfiles && supabaseProfiles.length > 0) {
+        console.log('Supabase profiles found:', supabaseProfiles);
+        allProfiles = supabaseProfiles.map((p: any) => ({
+          name: p.name,
+          image: p.image || null,
+          phone: p.phone
+        }));
+      }
+
+      // Only add localStorage profiles if they're not already in Supabase
+      const storedProfiles = localStorage.getItem("student-profiles");
+      if (storedProfiles) {
+        try {
+          const parsed = JSON.parse(storedProfiles);
+          console.log('Local profiles found:', parsed);
+          
+          const phoneNumbers = new Set(allProfiles.map(p => p.phone));
+          const uniqueLocalProfiles = parsed
+            .filter((p: any) => p.phone && !phoneNumbers.has(p.phone))
+            .map((p: any) => ({
+              name: p.name,
+              image: p.image || null,
+              phone: p.phone
+            }));
+          
+          allProfiles = [...allProfiles, ...uniqueLocalProfiles];
+        } catch (parseError) {
+          console.error('Error parsing localStorage profiles:', parseError);
+        }
       }
 
       console.log('All profiles combined:', allProfiles);
       setProfiles(allProfiles);
+      setConnectionStatus('connected');
     } catch (error) {
       console.error('Error fetching profiles:', error);
+      setConnectionStatus('error');
     }
   };
 
@@ -173,17 +191,34 @@ const LiveChat = () => {
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'public_profiles',
         },
         (payload) => {
-          console.log('Profile change detected:', payload);
+          console.log('New profile added:', payload.new);
+          fetchProfiles();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'public_profiles',
+        },
+        (payload) => {
+          console.log('Profile updated:', payload.new);
           fetchProfiles();
         }
       )
       .subscribe((status) => {
         console.log('Profiles subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          setConnectionStatus('connected');
+        } else if (status === 'CHANNEL_ERROR') {
+          setConnectionStatus('error');
+        }
       });
 
     return () => {
