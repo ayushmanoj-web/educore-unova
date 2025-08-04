@@ -55,30 +55,80 @@ const Profile = () => {
   const [existingProfileId, setExistingProfileId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load profile data on mount
+  // Load profile data on mount with cross-device sync
   useEffect(() => {
     const loadProfile = async () => {
-      // First try to load from localStorage to get the current user's profile
-      const profiles = getStoredProfiles();
-      if (profiles.length > 0) {
-        const last = profiles[profiles.length - 1];
-        setForm(last);
-        setImagePreview(last.image || undefined);
+      setIsLoading(true);
+      
+      try {
+        // First try to load from localStorage
+        const localProfiles = getStoredProfiles();
+        let currentProfile = null;
         
-        // Try to find this profile in Supabase and get its ID
-        try {
-          const { data: supabaseProfile } = await supabase
-            .from('public_profiles')
-            .select('id')
-            .eq('phone', last.phone)
-            .single();
-          
-          if (supabaseProfile) {
-            setExistingProfileId(supabaseProfile.id);
-          }
-        } catch (error) {
-          console.log('Profile not found in Supabase, will create new one');
+        if (localProfiles.length > 0) {
+          currentProfile = localProfiles[localProfiles.length - 1];
+          console.log('Found local profile:', currentProfile);
         }
+        
+        // Also check Supabase for any profiles that might not be in localStorage
+        // This handles the case where user downloads app on a new device
+        const { data: supabaseProfiles, error } = await supabase
+          .from('public_profiles')
+          .select('*')
+          .order('updated_at', { ascending: false });
+          
+        if (error) {
+          console.error('Error fetching Supabase profiles:', error);
+        } else if (supabaseProfiles && supabaseProfiles.length > 0) {
+          console.log('Found Supabase profiles:', supabaseProfiles);
+          
+          // If we have a local profile, try to find it in Supabase
+          if (currentProfile) {
+            const matchingProfile = supabaseProfiles.find(p => p.phone === currentProfile.phone);
+            if (matchingProfile) {
+              setExistingProfileId(matchingProfile.id);
+              // Update local profile with any changes from Supabase
+              const syncedProfile = {
+                name: matchingProfile.name,
+                class: matchingProfile.class,
+                division: matchingProfile.division,
+                dob: matchingProfile.dob,
+                phone: matchingProfile.phone,
+                image: matchingProfile.image || undefined
+              };
+              setForm(syncedProfile);
+              setImagePreview(syncedProfile.image || undefined);
+              
+              // Update localStorage with synced data
+              saveProfileLocally(syncedProfile);
+            } else {
+              // Local profile not found in Supabase, use local data
+              setForm(currentProfile);
+              setImagePreview(currentProfile.image || undefined);
+            }
+          } else {
+            // No local profile, check if there are any Supabase profiles we can suggest
+            // For now, just show empty form - user can enter their phone to search
+            console.log('No local profile found, but Supabase has profiles. User can search by phone.');
+          }
+        } else {
+          // No Supabase profiles and no local profiles
+          if (currentProfile) {
+            setForm(currentProfile);
+            setImagePreview(currentProfile.image || undefined);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading profile:', error);
+        // Fallback to localStorage only
+        const profiles = getStoredProfiles();
+        if (profiles.length > 0) {
+          const last = profiles[profiles.length - 1];
+          setForm(last);
+          setImagePreview(last.image || undefined);
+        }
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -121,34 +171,64 @@ const Profile = () => {
     return () => clearTimeout(timeoutId);
   }, [form.name, form.phone]);
 
-  // Check phone availability
+  // Check phone availability and auto-load existing profile
   useEffect(() => {
     if (!form.phone.trim()) {
       setPhoneAvailable(null);
       return;
     }
 
-    const checkPhoneAvailability = async () => {
+    const checkPhoneAndLoadProfile = async () => {
       try {
         // Check in Supabase public_profiles
         const { data: profiles } = await supabase
           .from('public_profiles')
-          .select('phone')
+          .select('*')
           .eq('phone', form.phone.trim());
 
-        // If we're updating an existing profile, exclude it from the check
-        const isTaken = profiles?.some(
-          (p) => p.phone === form.phone.trim()
-        ) && !existingProfileId;
-        
-        setPhoneAvailable(!isTaken);
+        if (profiles && profiles.length > 0) {
+          const existingProfile = profiles[0];
+          
+          if (!existingProfileId) {
+            // Found existing profile, auto-load it
+            console.log('Found existing profile for phone:', form.phone);
+            setExistingProfileId(existingProfile.id);
+            
+            const syncedProfile = {
+              name: existingProfile.name,
+              class: existingProfile.class,
+              division: existingProfile.division,
+              dob: existingProfile.dob,
+              phone: existingProfile.phone,
+              image: existingProfile.image || undefined
+            };
+            
+            setForm(syncedProfile);
+            setImagePreview(syncedProfile.image || undefined);
+            
+            // Save to localStorage for future use
+            saveProfileLocally(syncedProfile);
+            
+            toast({
+              title: "Profile found!",
+              description: "Your existing profile has been loaded from the server.",
+            });
+            
+            setPhoneAvailable(true); // It's their own profile
+          } else {
+            setPhoneAvailable(true); // It's their own profile
+          }
+        } else {
+          // Phone not found, it's available for new registration
+          setPhoneAvailable(true);
+        }
       } catch (error) {
         console.error('Error checking phone availability:', error);
         setPhoneAvailable(true); // Assume available if check fails
       }
     };
 
-    const timeoutId = setTimeout(checkPhoneAvailability, 300);
+    const timeoutId = setTimeout(checkPhoneAndLoadProfile, 500);
     return () => clearTimeout(timeoutId);
   }, [form.phone, existingProfileId]);
 
