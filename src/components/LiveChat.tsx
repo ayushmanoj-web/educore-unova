@@ -106,12 +106,15 @@ const LiveChat = () => {
 
       // Add Supabase profiles first
       if (supabaseProfiles && supabaseProfiles.length > 0) {
-        console.log('Supabase profiles found:', supabaseProfiles);
+        console.log('Supabase profiles found:', supabaseProfiles.length, 'profiles:', supabaseProfiles);
         allProfiles = supabaseProfiles.map((p: any) => ({
           name: p.name,
           image: p.image || null,
           phone: p.phone
         }));
+        console.log('Mapped Supabase profiles:', allProfiles);
+      } else {
+        console.log('No Supabase profiles found');
       }
 
       // Only add localStorage profiles if they're not already in Supabase
@@ -119,9 +122,11 @@ const LiveChat = () => {
       if (storedProfiles) {
         try {
           const parsed = JSON.parse(storedProfiles);
-          console.log('Local profiles found:', parsed);
+          console.log('Local profiles found:', parsed.length, 'profiles:', parsed);
           
           const phoneNumbers = new Set(allProfiles.map(p => p.phone));
+          console.log('Existing phone numbers:', Array.from(phoneNumbers));
+          
           const uniqueLocalProfiles = parsed
             .filter((p: any) => p.phone && !phoneNumbers.has(p.phone))
             .map((p: any) => ({
@@ -130,13 +135,16 @@ const LiveChat = () => {
               phone: p.phone
             }));
           
+          console.log('Unique local profiles after filtering:', uniqueLocalProfiles);
           allProfiles = [...allProfiles, ...uniqueLocalProfiles];
         } catch (parseError) {
           console.error('Error parsing localStorage profiles:', parseError);
         }
+      } else {
+        console.log('No localStorage profiles found');
       }
 
-      console.log('All profiles combined:', allProfiles);
+      console.log('Final profiles array:', allProfiles.length, 'total profiles:', allProfiles);
       setProfiles(allProfiles);
       setConnectionStatus('connected');
     } catch (error) {
