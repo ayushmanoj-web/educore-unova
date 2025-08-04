@@ -346,7 +346,8 @@ const LiveChat = () => {
   }
 
   return (
-    <div className="flex flex-col h-[600px] bg-white rounded-lg shadow-lg border">
+    <div className="flex flex-col h-[600px] md:h-[600px] bg-white rounded-lg shadow-lg border relative"
+         style={{ height: 'calc(100vh - 100px)' }}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b bg-blue-50">
         <div className="flex items-center gap-2">
@@ -452,7 +453,8 @@ const LiveChat = () => {
       </div>
 
       {/* Message Input */}
-      <form onSubmit={sendMessage} className="p-4 border-t bg-gray-50">
+      <form onSubmit={sendMessage} className="p-4 border-t bg-gray-50 sticky bottom-0 z-10"
+            style={{ paddingBottom: 'env(keyboard-inset-height, 1rem)' }}>
         <div className="flex gap-2">
           <Input
             value={newMessage}
