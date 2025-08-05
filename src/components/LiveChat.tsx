@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "@/components/ui/use-toast";
+import VideoCall from "./VideoCall";
 
 type ChatMessage = {
   id: string;
@@ -28,6 +29,7 @@ const LiveChat = () => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [showProfiles, setShowProfiles] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
+  const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Get current user from localStorage profiles
@@ -357,29 +359,29 @@ const LiveChat = () => {
     <div className="flex flex-col h-[600px] md:h-[600px] bg-white rounded-lg shadow-lg border relative"
          style={{ height: 'calc(100vh - 100px)' }}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-blue-50">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between p-4 border-b bg-blue-50 relative">
+        {/* Video Call Button - Top Left */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setIsVideoCallOpen(true)}
+          className="absolute left-4 top-4 flex items-center gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 z-10"
+        >
+          <Video className="w-4 h-4" />
+          Video Call
+        </Button>
+        
+        {/* Center Content */}
+        <div className="flex items-center gap-2 flex-1 justify-center ml-20">
           <MessageCircle className="w-5 h-5 text-blue-600" />
           <h3 className="font-semibold text-blue-800">Live Chat</h3>
           <span className={`text-xs px-2 py-1 rounded-full ${getConnectionStatusColor()}`}>
             {getConnectionStatusText()}
           </span>
         </div>
+        
+        {/* Right Side Buttons */}
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              toast({
-                title: "Video Call",
-                description: "Video call feature coming soon!",
-              });
-            }}
-            className="flex items-center gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-          >
-            <Video className="w-4 h-4" />
-            Video Call
-          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -499,6 +501,13 @@ const LiveChat = () => {
           </p>
         )}
       </form>
+      
+      {/* Video Call Modal */}
+      <VideoCall 
+        isOpen={isVideoCallOpen}
+        onClose={() => setIsVideoCallOpen(false)}
+        currentUser={getCurrentUser()}
+      />
     </div>
   );
 };
