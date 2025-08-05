@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Send, MessageCircle, Users, Trash2 } from "lucide-react";
+import { Send, MessageCircle, Users, Trash2, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -366,6 +366,20 @@ const LiveChat = () => {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              toast({
+                title: "Video Call",
+                description: "Video call feature coming soon!",
+              });
+            }}
+            className="flex items-center gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+          >
+            <Video className="w-4 h-4" />
+            Video Call
+          </Button>
           <Button
             variant="outline"
             size="sm"
