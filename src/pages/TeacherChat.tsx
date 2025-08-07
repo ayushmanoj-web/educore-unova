@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Send, ArrowLeft } from "lucide-react";
+import { Send, ArrowLeft, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 
@@ -21,6 +21,7 @@ interface Teacher {
   id: string;
   name: string;
   subject: string;
+  phone: string;
 }
 
 const TeacherChat = () => {
@@ -28,6 +29,7 @@ const TeacherChat = () => {
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [currentUserId] = useState("student-123"); // This would come from auth context
   const { toast } = useToast();
 
@@ -43,13 +45,12 @@ const TeacherChat = () => {
   }, [selectedTeacher]);
 
   const fetchTeachers = async () => {
-    // Mock data for demo - in real app, fetch from teacher_student_assignments
-    const mockTeachers = [
-      { id: "teacher-1", name: "Ms. Johnson", subject: "Mathematics" },
-      { id: "teacher-2", name: "Mr. Smith", subject: "Science" },
-      { id: "teacher-3", name: "Ms. Davis", subject: "English" },
+    const teacherProfiles = [
+      { id: "teacher-1", name: "Asainar Pookkaitha", subject: "Mathematics", phone: "8921463769" },
+      { id: "teacher-2", name: "Ranjith Lal", subject: "Science", phone: "9447427171" },
+      { id: "teacher-3", name: "Bushara Lt", subject: "English", phone: "9037209728" },
     ];
-    setTeachers(mockTeachers);
+    setTeachers(teacherProfiles);
   };
 
   const fetchMessages = async () => {
@@ -130,6 +131,12 @@ const TeacherChat = () => {
     }
   };
 
+  const filteredTeachers = teachers.filter(teacher =>
+    teacher.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    teacher.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    teacher.phone.includes(searchQuery)
+  );
+
   return (
     <div className="min-h-screen w-full px-4 py-6 bg-gradient-to-tr from-slate-50 via-white to-blue-50">
       <div className="max-w-6xl mx-auto">
@@ -147,10 +154,19 @@ const TeacherChat = () => {
           <Card className="lg:col-span-1">
             <CardHeader>
               <CardTitle>Your Teachers</CardTitle>
+              <div className="relative mt-4">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+                <Input
+                  placeholder="Search teachers..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
             </CardHeader>
             <CardContent className="p-0">
               <div className="space-y-2">
-                {teachers.map((teacher) => (
+                {filteredTeachers.map((teacher) => (
                   <button
                     key={teacher.id}
                     onClick={() => setSelectedTeacher(teacher)}
@@ -169,6 +185,7 @@ const TeacherChat = () => {
                       <div>
                         <p className="font-semibold">{teacher.name}</p>
                         <p className="text-sm text-slate-600">{teacher.subject}</p>
+                        <p className="text-xs text-slate-500">Ph: {teacher.phone}</p>
                       </div>
                     </div>
                   </button>
