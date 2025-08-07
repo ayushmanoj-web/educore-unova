@@ -40,9 +40,33 @@ const TeacherChat = () => {
   useEffect(() => {
     if (selectedTeacher) {
       fetchMessages();
-      subscribeToMessages();
+      
+      const channel = supabase
+        .channel(`messages-${selectedTeacher.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "messages_chat",
+          },
+          (payload) => {
+            const newMessage = payload.new as Message;
+            if (
+              (newMessage.sender_id === currentUserId && newMessage.receiver_id === selectedTeacher.id) ||
+              (newMessage.sender_id === selectedTeacher.id && newMessage.receiver_id === currentUserId)
+            ) {
+              setMessages((prev) => [...prev, newMessage]);
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
-  }, [selectedTeacher]);
+  }, [selectedTeacher, currentUserId]);
 
   const fetchTeachers = async () => {
     const teacherProfiles = [
@@ -72,35 +96,6 @@ const TeacherChat = () => {
     }
 
     setMessages(data || []);
-  };
-
-  const subscribeToMessages = () => {
-    if (!selectedTeacher) return;
-
-    const channel = supabase
-      .channel("messages-changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages_chat",
-        },
-        (payload) => {
-          const newMessage = payload.new as Message;
-          if (
-            (newMessage.sender_id === currentUserId && newMessage.receiver_id === selectedTeacher.id) ||
-            (newMessage.sender_id === selectedTeacher.id && newMessage.receiver_id === currentUserId)
-          ) {
-            setMessages((prev) => [...prev, newMessage]);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   };
 
   const sendMessage = async () => {
