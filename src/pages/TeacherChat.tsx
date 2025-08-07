@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Send, ArrowLeft, Search } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Send, ArrowLeft, Search, MessageSquare, User, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 
 interface Message {
@@ -31,7 +32,13 @@ const TeacherChat = () => {
   const [newMessage, setNewMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentUserId] = useState("student-123"); // This would come from auth context
+  const [showTeacherAuth, setShowTeacherAuth] = useState(false);
+  const [authTeacher, setAuthTeacher] = useState<Teacher | null>(null);
+  const [teacherCredentials, setTeacherCredentials] = useState({ name: "", phone: "" });
+  const [showViewMessages, setShowViewMessages] = useState(false);
+  const [viewMessagesTeacher, setViewMessagesTeacher] = useState<Teacher | null>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchTeachers();
@@ -70,9 +77,9 @@ const TeacherChat = () => {
 
   const fetchTeachers = async () => {
     const teacherProfiles = [
-      { id: "teacher-1", name: "Asainar Pookkaitha", subject: "Mathematics", phone: "8921463769" },
-      { id: "teacher-2", name: "Ranjith Lal", subject: "Science", phone: "9447427171" },
-      { id: "teacher-3", name: "Bushara Lt", subject: "English", phone: "9037209728" },
+      { id: "teacher-1", name: "Asainar Pookkaitha", subject: "Malayalam", phone: "8921463769" },
+      { id: "teacher-2", name: "Ranjith Lal", subject: "Malayalam", phone: "9447427171" },
+      { id: "teacher-3", name: "Bushara", subject: "Little Kids", phone: "9037209728" },
     ];
     setTeachers(teacherProfiles);
   };
@@ -126,6 +133,62 @@ const TeacherChat = () => {
     }
   };
 
+  const handleTeacherProfile = (teacher: Teacher) => {
+    setAuthTeacher(teacher);
+    setShowTeacherAuth(true);
+    setTeacherCredentials({ name: "", phone: "" });
+  };
+
+  const handleViewMessages = async (teacher: Teacher) => {
+    setViewMessagesTeacher(teacher);
+    setShowViewMessages(true);
+    // Fetch messages for this teacher
+    const { data } = await supabase
+      .from("messages_chat")
+      .select("*")
+      .eq("receiver_id", teacher.id)
+      .order("timestamp", { ascending: false });
+    setMessages(data || []);
+  };
+
+  const handleTeacherAuth = () => {
+    if (!authTeacher) return;
+    
+    // Validate teacher credentials
+    const validCredentials = {
+      "Asainar Pookkaitha": "8921463769",
+      "Ranjith Lal": "9447427171",
+      "Bushara": "9037209728"
+    };
+
+    const expectedPhone = validCredentials[teacherCredentials.name as keyof typeof validCredentials];
+    
+    if (expectedPhone && teacherCredentials.phone === expectedPhone) {
+      // Authentication successful - navigate to live chat
+      localStorage.setItem("teacher-session", JSON.stringify({
+        name: teacherCredentials.name,
+        phone: teacherCredentials.phone,
+        teacher: authTeacher
+      }));
+      
+      navigate(`/teacher-live-chat/${authTeacher.id}`, { 
+        state: { teacher: authTeacher, isTeacher: true } 
+      });
+      
+      setShowTeacherAuth(false);
+      toast({
+        title: "Authentication Successful",
+        description: `Welcome ${teacherCredentials.name}!`,
+      });
+    } else {
+      toast({
+        title: "Authentication Failed",
+        description: "Invalid name or phone number. Please check your credentials.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const filteredTeachers = teachers.filter(teacher =>
     teacher.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     teacher.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -162,28 +225,57 @@ const TeacherChat = () => {
             <CardContent className="p-0">
               <div className="space-y-2">
                 {filteredTeachers.map((teacher) => (
-                  <button
+                  <div
                     key={teacher.id}
-                    onClick={() => setSelectedTeacher(teacher)}
-                    className={`w-full p-4 text-left hover:bg-slate-100 transition-colors border-l-4 ${
+                    className={`w-full p-4 border-l-4 ${
                       selectedTeacher?.id === teacher.id
                         ? "border-blue-500 bg-blue-50"
                         : "border-transparent"
                     }`}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 mb-3">
                       <Avatar>
                         <AvatarFallback>
                           {teacher.name.split(" ").map((n) => n[0]).join("")}
                         </AvatarFallback>
                       </Avatar>
-                      <div>
+                      <div className="flex-1">
                         <p className="font-semibold">{teacher.name}</p>
                         <p className="text-sm text-slate-600">{teacher.subject}</p>
                         <p className="text-xs text-slate-500">Ph: {teacher.phone}</p>
                       </div>
                     </div>
-                  </button>
+                    <div className="flex gap-2 mb-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/teacher-live-chat/${teacher.id}`, { 
+                          state: { teacher, isTeacher: false } 
+                        })}
+                        className="flex-1 text-purple-600 hover:text-purple-700"
+                      >
+                        Live Chat
+                      </Button>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleTeacherProfile(teacher)}
+                        className="flex-1 text-blue-600 hover:text-blue-700"
+                      >
+                        Teacher Profile
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewMessages(teacher)}
+                        className="flex-1 text-green-600 hover:text-green-700"
+                      >
+                        View Messages
+                      </Button>
+                    </div>
+                  </div>
                 ))}
               </div>
             </CardContent>
@@ -256,6 +348,78 @@ const TeacherChat = () => {
             )}
           </Card>
         </div>
+
+        {/* Teacher Authentication Modal */}
+        <Dialog open={showTeacherAuth} onOpenChange={setShowTeacherAuth}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Teacher Authentication
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-slate-600">
+                Please enter your credentials to access the teacher portal for {authTeacher?.name}.
+              </p>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Name</label>
+                  <Input
+                    value={teacherCredentials.name}
+                    onChange={(e) => setTeacherCredentials({...teacherCredentials, name: e.target.value})}
+                    placeholder="Enter your full name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Phone Number</label>
+                  <Input
+                    value={teacherCredentials.phone}
+                    onChange={(e) => setTeacherCredentials({...teacherCredentials, phone: e.target.value})}
+                    placeholder="Enter your phone number"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2 pt-4">
+                <Button variant="outline" onClick={() => setShowTeacherAuth(false)} className="flex-1">
+                  Cancel
+                </Button>
+                <Button onClick={handleTeacherAuth} className="flex-1">
+                  Login
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* View Messages Modal */}
+        <Dialog open={showViewMessages} onOpenChange={setShowViewMessages}>
+          <DialogContent className="sm:max-w-2xl max-h-[80vh]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                Messages to {viewMessagesTeacher?.name}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="max-h-96 overflow-y-auto space-y-3">
+              {messages.length === 0 ? (
+                <p className="text-center text-slate-500 py-8">No messages found for this teacher.</p>
+              ) : (
+                messages.map((message) => (
+                  <div key={message.id} className="p-3 bg-slate-50 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-sm">Student</span>
+                      <span className="text-xs text-slate-500">
+                        {new Date(message.timestamp).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-sm">{message.message_text}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

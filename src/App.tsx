@@ -16,6 +16,7 @@ import LiveChatPage from "./pages/LiveChatPage";
 import WhatsAppChatPage from "./pages/WhatsAppChatPage";
 import Leave from "./pages/Leave";
 import TeacherChat from "./pages/TeacherChat";
+import TeacherLiveChat from "./pages/TeacherLiveChat";
 import Progress from "./pages/Progress";
 import Attendance from "./pages/Attendance";
 import ExtraCurriculars from "./pages/ExtraCurriculars";
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="/whatsapp-chat" element={<WhatsAppChatPage />} />
             <Route path="/leave" element={<Leave />} />
             <Route path="/teacher-chat" element={<TeacherChat />} />
+            <Route path="/teacher-live-chat/:teacherId" element={<TeacherLiveChat />} />
             <Route path="/progress" element={<Progress />} />
             <Route path="/attendance" element={<Attendance />} />
             <Route path="/extra-curriculars" element={<ExtraCurriculars />} />
