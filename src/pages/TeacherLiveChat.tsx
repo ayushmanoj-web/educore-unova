@@ -15,6 +15,9 @@ interface Message {
   message_text: string;
   timestamp: string;
   is_read: boolean;
+  sender_name?: string;
+  sender_class?: string;
+  sender_division?: string;
 }
 
 interface Teacher {
@@ -145,11 +148,16 @@ const TeacherLiveChat = () => {
     const senderId = isTeacher ? teacherId : (currentUser.phone || currentUser.name);
     const receiverId = isTeacher ? (currentUser.phone || currentUser.name) : teacherId;
 
-    const { error } = await supabase.from("messages_chat").insert({
+    const messageData = {
       sender_id: senderId,
       receiver_id: receiverId,
       message_text: newMessage.trim(),
-    });
+      sender_name: isTeacher ? teacher?.name : currentUser.name,
+      sender_class: isTeacher ? null : currentUser.class,
+      sender_division: isTeacher ? null : currentUser.division,
+    };
+
+    const { error } = await supabase.from("messages_chat").insert(messageData);
 
     if (error) {
       toast({
@@ -242,6 +250,14 @@ const TeacherLiveChat = () => {
                             : "bg-slate-200 text-slate-800"
                         }`}
                       >
+                        {!isMyMessage && message.sender_name && (
+                          <p className="text-xs font-semibold mb-1">
+                            {message.sender_name}
+                            {message.sender_class && message.sender_division && 
+                              ` (${message.sender_class} - ${message.sender_division})`
+                            }
+                          </p>
+                        )}
                         <p>{message.message_text}</p>
                         <p className="text-xs mt-1 opacity-70">
                           {new Date(message.timestamp).toLocaleTimeString()}
