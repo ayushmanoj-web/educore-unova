@@ -6,6 +6,7 @@ import { User, Phone, Eye, EyeOff, Users, Bell, Calendar, Check, X, Clock, Searc
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import TeacherProfileAuth from "./TeacherProfileAuth";
 
 type TeachersAccessModalProps = {
   open: boolean;
@@ -94,6 +95,7 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
   const [selectedStudent, setSelectedStudent] = useState<StudentWithLeaveCount | null>(null);
   const [selectedStudentLeaves, setSelectedStudentLeaves] = useState<LeaveApplication[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showTeacherAuth, setShowTeacherAuth] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -593,6 +595,14 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
               <FileText size={20} />
               View Students Leave History
             </Button>
+            <Button 
+              onClick={() => setShowTeacherAuth(true)}
+              className="w-full flex items-center justify-center gap-2"
+              variant="outline"
+            >
+              <User size={20} />
+              Teacher Profile
+            </Button>
           </div>
         )}
 
@@ -940,6 +950,17 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
           </div>
         )}
       </SheetContent>
+      
+      <TeacherProfileAuth
+        open={showTeacherAuth}
+        onOpenChange={setShowTeacherAuth}
+        onLoginSuccess={(teacher) => {
+          toast({
+            title: "Teacher Profile Updated",
+            description: `Profile updated for ${teacher.name}`,
+          });
+        }}
+      />
     </Sheet>
   );
 };

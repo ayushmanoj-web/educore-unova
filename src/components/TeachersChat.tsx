@@ -43,6 +43,17 @@ function getCurrentUser(): Profile | undefined {
   return profiles[profiles.length - 1];
 }
 
+function filterProfilesByClass(profiles: Profile[], currentUser: Profile | undefined): Profile[] {
+  if (!currentUser || !currentUser.class || !currentUser.division) {
+    return profiles;
+  }
+  
+  return profiles.filter(profile => 
+    profile.class === currentUser.class && 
+    profile.division === currentUser.division
+  );
+}
+
 function getInitials(name: string) {
   return name
     .split(" ")
@@ -97,7 +108,7 @@ const TeachersChat: React.FC = () => {
     fetchSupabaseProfiles();
   }, []);
 
-  // Combine all profiles
+  // Combine all profiles and filter by class/division
   useEffect(() => {
     const localProfiles = getStoredProfiles();
     const combined = [...localProfiles, ...supabaseProfiles];
@@ -111,8 +122,12 @@ const TeachersChat: React.FC = () => {
       return acc;
     }, []);
     
-    setAllProfiles(uniqueProfiles);
-    console.log("Combined profiles:", uniqueProfiles);
+    // Filter profiles by current user's class and division
+    const currentUser = getCurrentUser();
+    const filteredProfiles = filterProfilesByClass(uniqueProfiles, currentUser);
+    
+    setAllProfiles(filteredProfiles);
+    console.log("Combined and filtered profiles:", filteredProfiles);
   }, [profiles, supabaseProfiles]);
 
   // Fetch messages from Supabase on mount
@@ -414,9 +429,14 @@ const TeachersChat: React.FC = () => {
     <div className="flex flex-col rounded-xl border bg-white shadow animate-fade-in max-h-[420px] min-h-[340px] overflow-hidden">
       <div className="flex items-center gap-2 px-4 py-3 border-b bg-slate-50">
         <Users className="text-blue-800" />
-        <span className="font-semibold text-blue-900">Class Group Chat</span>
+        <span className="font-semibold text-blue-900">
+          {currentUser?.class && currentUser?.division 
+            ? `${currentUser.class}${currentUser.division} Live Chat`
+            : 'Class Group Chat'
+          }
+        </span>
         <span className="ml-auto text-xs text-slate-400">
-          {allProfiles.length} profiles loaded
+          {allProfiles.length} members
         </span>
       </div>
       <div className="flex-1 overflow-y-auto px-3 py-2 bg-gradient-to-b from-blue-50 via-white to-blue-50">
