@@ -16,9 +16,6 @@ interface Message {
   message_text: string;
   timestamp: string;
   is_read: boolean;
-  sender_name?: string;
-  sender_class?: string;
-  sender_division?: string;
 }
 
 interface Teacher {
@@ -111,27 +108,10 @@ const TeacherChat = () => {
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedTeacher) return;
 
-    // Get student profile info from localStorage
-    const studentProfiles = localStorage.getItem("student-profiles");
-    let studentInfo = { name: "Student", class: "", division: "" };
-    
-    if (studentProfiles) {
-      const profiles = JSON.parse(studentProfiles);
-      const latestProfile = profiles[profiles.length - 1];
-      studentInfo = {
-        name: latestProfile.name || "Student",
-        class: latestProfile.class || "",
-        division: latestProfile.division || ""
-      };
-    }
-
     const { error } = await supabase.from("messages_chat").insert({
       sender_id: currentUserId,
       receiver_id: selectedTeacher.id,
       message_text: newMessage.trim(),
-      sender_name: studentInfo.name,
-      sender_class: studentInfo.class,
-      sender_division: studentInfo.division,
     });
 
     if (error) {
@@ -428,12 +408,7 @@ const TeacherChat = () => {
                 messages.map((message) => (
                   <div key={message.id} className="p-3 bg-slate-50 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-sm">
-                        {message.sender_name || "Student"}
-                        {message.sender_class && message.sender_division && 
-                          ` (${message.sender_class} - ${message.sender_division})`
-                        }
-                      </span>
+                      <span className="font-medium text-sm">Student</span>
                       <span className="text-xs text-slate-500">
                         {new Date(message.timestamp).toLocaleString()}
                       </span>

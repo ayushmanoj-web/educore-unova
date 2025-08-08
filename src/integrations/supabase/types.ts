@@ -393,10 +393,7 @@ export type Database = {
           is_read: boolean
           message_text: string
           receiver_id: string
-          sender_class: string | null
-          sender_division: string | null
           sender_id: string
-          sender_name: string | null
           timestamp: string
         }
         Insert: {
@@ -405,10 +402,7 @@ export type Database = {
           is_read?: boolean
           message_text: string
           receiver_id: string
-          sender_class?: string | null
-          sender_division?: string | null
           sender_id: string
-          sender_name?: string | null
           timestamp?: string
         }
         Update: {
@@ -417,10 +411,7 @@ export type Database = {
           is_read?: boolean
           message_text?: string
           receiver_id?: string
-          sender_class?: string | null
-          sender_division?: string | null
           sender_id?: string
-          sender_name?: string | null
           timestamp?: string
         }
         Relationships: []
