@@ -393,7 +393,10 @@ export type Database = {
           is_read: boolean
           message_text: string
           receiver_id: string
+          sender_class: string | null
+          sender_division: string | null
           sender_id: string
+          sender_name: string | null
           timestamp: string
         }
         Insert: {
@@ -402,7 +405,10 @@ export type Database = {
           is_read?: boolean
           message_text: string
           receiver_id: string
+          sender_class?: string | null
+          sender_division?: string | null
           sender_id: string
+          sender_name?: string | null
           timestamp?: string
         }
         Update: {
@@ -411,7 +417,10 @@ export type Database = {
           is_read?: boolean
           message_text?: string
           receiver_id?: string
+          sender_class?: string | null
+          sender_division?: string | null
           sender_id?: string
+          sender_name?: string | null
           timestamp?: string
         }
         Relationships: []
@@ -524,6 +533,45 @@ export type Database = {
           name?: string
           phone?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      teacher_messages: {
+        Row: {
+          created_at: string
+          id: string
+          message_text: string
+          student_class: string
+          student_division: string
+          student_name: string
+          student_phone: string
+          teacher_name: string
+          teacher_phone: string
+          timestamp: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message_text: string
+          student_class: string
+          student_division: string
+          student_name: string
+          student_phone: string
+          teacher_name: string
+          teacher_phone: string
+          timestamp?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message_text?: string
+          student_class?: string
+          student_division?: string
+          student_name?: string
+          student_phone?: string
+          teacher_name?: string
+          teacher_phone?: string
+          timestamp?: string
         }
         Relationships: []
       }

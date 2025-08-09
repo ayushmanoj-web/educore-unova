@@ -31,10 +31,12 @@ const TeacherChat = () => {
   const [newMessage, setNewMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentUserId] = useState("student-123"); // This would come from auth context
+  const [studentProfile, setStudentProfile] = useState<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchTeachers();
+    fetchStudentProfile();
   }, []);
 
   useEffect(() => {
@@ -43,6 +45,28 @@ const TeacherChat = () => {
       subscribeToMessages();
     }
   }, [selectedTeacher]);
+
+  const fetchStudentProfile = async () => {
+    try {
+      // Try to get from public_profiles first
+      const { data: profiles, error } = await supabase
+        .from('public_profiles')
+        .select('*')
+        .limit(1);
+
+      if (profiles && profiles.length > 0) {
+        setStudentProfile(profiles[0]);
+      } else {
+        // Fallback to localStorage
+        const localProfile = localStorage.getItem('student-profile');
+        if (localProfile) {
+          setStudentProfile(JSON.parse(localProfile));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching student profile:', error);
+    }
+  };
 
   const fetchTeachers = async () => {
     const teacherProfiles = [
@@ -104,24 +128,44 @@ const TeacherChat = () => {
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedTeacher) return;
+    if (!newMessage.trim() || !selectedTeacher || !studentProfile) return;
 
-    const { error } = await supabase.from("messages_chat").insert({
-      sender_id: currentUserId,
-      receiver_id: selectedTeacher.id,
-      message_text: newMessage.trim(),
-    });
+    try {
+      // Insert into messages_chat for regular chat functionality
+      const { error: chatError } = await supabase.from("messages_chat").insert({
+        sender_id: currentUserId,
+        receiver_id: selectedTeacher.id,
+        message_text: newMessage.trim(),
+      });
 
-    if (error) {
+      if (chatError) {
+        throw chatError;
+      }
+
+      // Also insert into teacher_messages for teacher view
+      const { error: teacherError } = await supabase.from("teacher_messages").insert({
+        teacher_name: selectedTeacher.name,
+        teacher_phone: selectedTeacher.phone,
+        student_name: studentProfile.name,
+        student_class: studentProfile.class,
+        student_division: studentProfile.division,
+        student_phone: studentProfile.phone,
+        message_text: newMessage.trim(),
+      });
+
+      if (teacherError) {
+        console.error('Error saving to teacher_messages:', teacherError);
+        // Don't throw here as the main chat still works
+      }
+
+      setNewMessage("");
+    } catch (error) {
       toast({
         title: "Error",
         description: "Failed to send message",
         variant: "destructive",
       });
-      return;
     }
-
-    setNewMessage("");
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {

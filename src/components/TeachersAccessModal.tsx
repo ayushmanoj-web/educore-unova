@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { User, Phone, Eye, EyeOff, Users, Bell, Calendar, Check, X, Clock, Search, FileText, ArrowLeft } from "lucide-react";
+import { User, Phone, Eye, EyeOff, Users, Bell, Calendar, Check, X, Clock, Search, FileText, ArrowLeft, MessageCircle } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import TeacherProfileAuth from "./TeacherProfileAuth";
+import { useNavigate } from "react-router-dom";
 
 type TeachersAccessModalProps = {
   open: boolean;
@@ -81,6 +82,7 @@ const setTeacherLoggedIn = (loggedIn: boolean) => {
 };
 
 const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) => {
+  const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("login");
@@ -603,6 +605,17 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
               <User size={20} />
               Teacher Profile
             </Button>
+            <Button 
+              onClick={() => {
+                onOpenChange(false);
+                navigate("/teacher-messages");
+              }}
+              className="w-full flex items-center justify-center gap-2"
+              variant="outline"
+            >
+              <MessageCircle size={20} />
+              View Messages
+            </Button>
           </div>
         )}
 
@@ -955,10 +968,21 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
         open={showTeacherAuth}
         onOpenChange={setShowTeacherAuth}
         onLoginSuccess={(teacher) => {
+          // Store teacher login in localStorage for session management
+          localStorage.setItem("teacher-logged-in", JSON.stringify({
+            name: teacher.name,
+            phone: teacher.phone,
+            class: teacher.class,
+            loginTime: new Date().toISOString()
+          }));
+          
           toast({
-            title: "Teacher Profile Updated",
-            description: `Profile updated for ${teacher.name}`,
+            title: "Teacher Profile Login Successful",
+            description: `Welcome, ${teacher.name}! You can now access teacher features.`,
           });
+          
+          // Close the auth modal
+          setShowTeacherAuth(false);
         }}
       />
     </Sheet>
