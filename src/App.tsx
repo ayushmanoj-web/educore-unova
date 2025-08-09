@@ -16,13 +16,13 @@ import LiveChatPage from "./pages/LiveChatPage";
 import WhatsAppChatPage from "./pages/WhatsAppChatPage";
 import Leave from "./pages/Leave";
 import TeacherChat from "./pages/TeacherChat";
+import TeacherMessagesPage from "./pages/TeacherMessagesPage";
 import Progress from "./pages/Progress";
 import Attendance from "./pages/Attendance";
 import ExtraCurriculars from "./pages/ExtraCurriculars";
 import ClubApplication from "./pages/ClubApplication";
 import ClubApplications from "./pages/ClubApplications";
 import ClubChat from "./pages/ClubChat";
-import TeacherMessages from "./pages/TeacherMessages";
 
 const queryClient = new QueryClient();
 
@@ -45,13 +45,13 @@ const App = () => (
             <Route path="/whatsapp-chat" element={<WhatsAppChatPage />} />
             <Route path="/leave" element={<Leave />} />
             <Route path="/teacher-chat" element={<TeacherChat />} />
+            <Route path="/teacher-messages" element={<TeacherMessagesPage />} />
             <Route path="/progress" element={<Progress />} />
             <Route path="/attendance" element={<Attendance />} />
             <Route path="/extra-curriculars" element={<ExtraCurriculars />} />
             <Route path="/club-application/:clubId" element={<ClubApplication />} />
             <Route path="/club-applications/:clubId" element={<ClubApplications />} />
             <Route path="/club-chat/:clubId" element={<ClubChat />} />
-            <Route path="/teacher-messages" element={<TeacherMessages />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <BottomNav />

@@ -47,12 +47,15 @@ const TeacherProfileAuth: React.FC<TeacherProfileAuthProps> = ({
       );
 
       if (validTeacher) {
-        // Store teacher login status
-        localStorage.setItem("teacher-logged-in", JSON.stringify({
+        // Store teacher login status with class information
+        const teacherData = {
           ...validTeacher,
           class: formData.class || validTeacher.class,
+          division: 'All', // Teachers can access all divisions
           loginTime: new Date().toISOString()
-        }));
+        };
+        
+        localStorage.setItem("teacher-logged-in", JSON.stringify(teacherData));
 
         onLoginSuccess({
           name: validTeacher.name,
@@ -61,8 +64,8 @@ const TeacherProfileAuth: React.FC<TeacherProfileAuthProps> = ({
         });
 
         toast({
-          title: "Login Successful",
-          description: `Welcome, ${validTeacher.name}!`,
+          title: "Login Successful", 
+          description: `Welcome, ${validTeacher.name}! You have been added to your class chat.`,
         });
 
         // Reset form and close modal

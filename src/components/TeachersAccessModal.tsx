@@ -607,6 +607,17 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
             </Button>
             <Button 
               onClick={() => {
+                // Check if teacher is logged in first
+                const teacherData = localStorage.getItem("teacher-logged-in");
+                if (!teacherData) {
+                  toast({
+                    title: "Access Denied",
+                    description: "Please log in with your teacher profile first.",
+                    variant: "destructive",
+                  });
+                  setShowTeacherAuth(true);
+                  return;
+                }
                 onOpenChange(false);
                 navigate("/teacher-messages");
               }}
