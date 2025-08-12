@@ -1,33 +1,42 @@
 
-import React, { useState, useEffect } from "react";
-import { Bot, Minimize2 } from "lucide-react";
+import React, { useState } from "react";
+import { Bot, Minimize2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
 
 const AIBot: React.FC = () => {
   const [isMinimized, setIsMinimized] = useState(true);
 
-  useEffect(() => {
-    // Load Jotform embed handler script
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jotfor.ms/s/umd/latest/for-form-embed-handler.js';
-    script.async = true;
-    document.head.appendChild(script);
+  type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
-    script.onload = () => {
-      // Initialize Jotform embed handler once script is loaded
-      if (window.jotformEmbedHandler) {
-        window.jotformEmbedHandler("iframe[id='JotFormIFrame-01977e78685872f9bf17c1032105b079c07e']", "https://www.jotform.com");
-      }
-    };
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    { role: 'assistant', content: "Hi! I'm Edudevadar AI. How can I help you today?" }
+  ]);
+  const [input, setInput] = useState("");
+  const [isSending, setIsSending] = useState(false);
 
-    return () => {
-      // Cleanup script on unmount
-      if (document.head.contains(script)) {
-        document.head.removeChild(script);
-      }
-    };
-  }, []);
+  const sendMessage = async () => {
+    if (!input.trim() || isSending) return;
+    const userMsg: ChatMessage = { role: 'user', content: input.trim() };
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+    setIsSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('edudevadar-ai', {
+        body: { messages: [...messages, userMsg] }
+      });
+      if (error) throw error;
+      const reply = data?.generatedText || "Sorry, I couldn't generate a response.";
+      setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
+    } catch (e) {
+      console.error('Edudevadar AI error:', e);
+      setMessages((prev) => [...prev, { role: 'assistant', content: "I ran into an issue. Please try again." }]);
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   if (isMinimized) {
     return (
@@ -48,7 +57,7 @@ const AIBot: React.FC = () => {
             <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
               <Bot className="h-5 w-5 text-white" />
             </div>
-            EduBot: Virtual Tutor
+            Edudevadar AI
           </CardTitle>
           <Button
             variant="ghost"
@@ -60,33 +69,45 @@ const AIBot: React.FC = () => {
           </Button>
         </CardHeader>
         <CardContent className="flex-1 flex flex-col p-0 bg-white overflow-hidden">
-          <iframe 
-            id="JotFormIFrame-01977e78685872f9bf17c1032105b079c07e" 
-            title="EduBot: Virtual Tutor"
-            allowTransparency={true}
-            allow="geolocation; microphone; camera; fullscreen"
-            src="https://agent.jotform.com/01977e78685872f9bf17c1032105b079c07e/voice?embedMode=iframe&background=1&shadow=1"
-            style={{
-              minWidth: '100%',
-              maxWidth: '100%',
-              height: '100%',
-              border: 'none',
-              width: '100%'
-            }}
-            scrolling="no"
-            className="flex-1"
-          />
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {messages.map((m, idx) => (
+              <div key={idx} className={`flex ${m.role === 'assistant' ? 'justify-start' : 'justify-end'}`}>
+                <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-sm ${m.role === 'assistant' ? 'bg-blue-50 text-blue-900' : 'bg-slate-100 text-slate-800'}`}>
+                  {m.content}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="p-3 border-t bg-white">
+            <form
+              className="flex items-center gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                sendMessage();
+              }}
+            >
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask Edudevadar AI..."
+                aria-label="Message Edudevadar AI"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                  }
+                }}
+              />
+              <Button type="submit" disabled={isSending || !input.trim()} className="rounded-full">
+                <Send className="h-4 w-4" />
+              </Button>
+            </form>
+          </div>
         </CardContent>
       </Card>
     </div>
   );
 };
 
-// Add type declaration for the Jotform embed handler
-declare global {
-  interface Window {
-    jotformEmbedHandler: (selector: string, url: string) => void;
-  }
-}
 
 export default AIBot;
