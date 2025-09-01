@@ -8,7 +8,7 @@ const DashboardHero = () => (
       <GraduationCap size={40} className="text-blue-700" />
     </div>
     <div>
-      <h1 className="text-4xl font-bold mb-2 text-blue-900 tracking-tighter">Welcome to Edudevadar</h1>
+      <h1 className="text-4xl font-bold mb-2 text-blue-900 tracking-tighter">Welcome to Neodevadar</h1>
       <p className="text-lg text-slate-700 mb-4 max-w-xl">
         Discover courses, complete fun assignments, and track your learning progress and see everything about your education— all in one place!
       </p>
