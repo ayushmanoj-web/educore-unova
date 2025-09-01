@@ -4,6 +4,7 @@ import { Bot, Minimize2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 
 const AIBot: React.FC = () => {
@@ -16,6 +17,7 @@ const AIBot: React.FC = () => {
   ]);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [selectedModel, setSelectedModel] = useState("chatgpt");
 
   const sendMessage = async () => {
     if (!input.trim() || isSending) return;
@@ -25,7 +27,7 @@ const AIBot: React.FC = () => {
     setIsSending(true);
     try {
       const { data, error } = await supabase.functions.invoke('edudevadar-ai', {
-        body: { messages: [...messages, userMsg] }
+        body: { messages: [...messages, userMsg], model: selectedModel }
       });
       if (error) throw error;
       const reply = data?.generatedText || "Sorry, I couldn't generate a response.";
@@ -78,7 +80,19 @@ const AIBot: React.FC = () => {
               </div>
             ))}
           </div>
-          <div className="p-3 border-t bg-white">
+          <div className="p-3 border-t bg-white space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-600">Model:</span>
+              <Select value={selectedModel} onValueChange={setSelectedModel}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="chatgpt">ChatGPT</SelectItem>
+                  <SelectItem value="gemini">Gemini</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <form
               className="flex items-center gap-2"
               onSubmit={(e) => {
