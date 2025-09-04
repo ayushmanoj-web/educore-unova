@@ -14,6 +14,7 @@ import BottomNav from "./components/BottomNav";
 import Timetable from "./pages/Timetable";
 import LiveChatPage from "./pages/LiveChatPage";
 import WhatsAppChatPage from "./pages/WhatsAppChatPage";
+import DevadarMedia from "./pages/DevadarMedia";
 import Leave from "./pages/Leave";
 import TeacherChat from "./pages/TeacherChat";
 import TeacherMessagesPage from "./pages/TeacherMessagesPage";
@@ -42,7 +43,8 @@ const App = () => (
             <Route path="/textbooks" element={<Textbooks />} />
             <Route path="/timetable" element={<Timetable />} />
             <Route path="/chat" element={<LiveChatPage />} />
-            <Route path="/whatsapp-chat" element={<WhatsAppChatPage />} />
+        <Route path="/whatsapp-chat" element={<WhatsAppChatPage />} />
+        <Route path="/devadar-media" element={<DevadarMedia />} />
             <Route path="/leave" element={<Leave />} />
             <Route path="/teacher-chat" element={<TeacherChat />} />
             <Route path="/teacher-messages" element={<TeacherMessagesPage />} />

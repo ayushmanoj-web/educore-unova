@@ -40,6 +40,15 @@ const Index = () => {
           </Link>
         </div>
         
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+          <Link to="/devadar-media">
+            <Button className="w-full h-16 text-lg font-semibold bg-red-600 hover:bg-red-700 text-white shadow-lg">
+              <MessageCircle className="mr-3 h-6 w-6" />
+              Devadar Media
+            </Button>
+          </Link>
+        </div>
+        
         <div className="flex flex-col md:flex-row gap-10">
           <section className="flex-1">
             <CourseList />

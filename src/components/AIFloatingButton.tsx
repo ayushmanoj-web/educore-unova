@@ -28,12 +28,12 @@ const AIFloatingButton = () => {
 
       {/* Full Screen AI Chat Overlay */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-sm">
           {/* Close Button */}
           <button
             onClick={() => setIsOpen(false)}
             className={cn(
-              "absolute top-6 right-6 z-60",
+              "absolute top-6 right-6 z-[10000]",
               "w-12 h-12 rounded-full",
               "bg-white/10 hover:bg-white/20",
               "text-white",
