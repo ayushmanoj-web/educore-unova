@@ -2,7 +2,7 @@
 import DashboardHero from "@/components/DashboardHero";
 import CourseList from "@/components/CourseList";
 import FloatingChatButton from "@/components/FloatingChatButton";
-import AIBot from "@/components/AIBot";
+import AIFloatingButton from "@/components/AIFloatingButton";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { MessageCircle, TrendingUp, Calendar } from "lucide-react";
@@ -46,7 +46,7 @@ const Index = () => {
           </section>
         </div>
       </main>
-      <AIBot />
+      <AIFloatingButton />
       <FloatingChatButton />
     </div>
   );
