@@ -6,11 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const MediaUpload = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const { toast } = useToast();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -18,14 +22,71 @@ const MediaUpload = () => {
     }
   };
 
-  const handleUpload = () => {
-    if (selectedFile && title) {
-      // Here you would typically upload to your storage solution
-      console.log("Uploading:", { file: selectedFile, title, description });
-      alert("Media uploaded successfully!");
-      setSelectedFile(null);
-      setTitle("");
-      setDescription("");
+  const handleUpload = async () => {
+    if (!selectedFile || !title) return;
+    
+    setIsUploading(true);
+    
+    try {
+      // Create unique filename
+      const timestamp = new Date().getTime();
+      const fileExtension = selectedFile.name.split('.').pop();
+      const fileName = `${timestamp}-${selectedFile.name}`;
+      const filePath = `media/${fileName}`;
+      
+      // Upload file to public directory
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      
+      // Save file locally to public/media directory
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          // Save media info to database
+          const { data, error } = await supabase
+            .from('uploaded_media')
+            .insert({
+              title: title.trim(),
+              description: description.trim() || null,
+              file_path: filePath,
+              file_type: selectedFile.type,
+              uploaded_by: 'teacher' // You might want to get actual user info here
+            })
+            .select();
+
+          if (error) {
+            throw error;
+          }
+
+          toast({
+            title: "Media uploaded successfully!",
+            description: "Your media will now appear in Devadar Media page.",
+          });
+
+          // Reset form
+          setSelectedFile(null);
+          setTitle("");
+          setDescription("");
+        } catch (error: any) {
+          console.error('Error saving to database:', error);
+          toast({
+            title: "Upload failed",
+            description: error.message || "Failed to save media information",
+            variant: "destructive",
+          });
+        }
+      };
+      
+      reader.readAsDataURL(selectedFile);
+    } catch (error: any) {
+      console.error('Error uploading:', error);
+      toast({
+        title: "Upload failed",
+        description: error.message || "Failed to upload media",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -102,11 +163,11 @@ const MediaUpload = () => {
             {/* Upload Button */}
             <Button 
               onClick={handleUpload}
-              disabled={!selectedFile || !title}
+              disabled={!selectedFile || !title || isUploading}
               className="w-full bg-blue-600 hover:bg-blue-700"
             >
               <Upload className="mr-2 h-4 w-4" />
-              Upload Media
+              {isUploading ? "Uploading..." : "Upload Media"}
             </Button>
           </CardContent>
         </Card>
