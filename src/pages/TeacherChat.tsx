@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Send, ArrowLeft, Search } from "lucide-react";
+import { Send, ArrowLeft, Search, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 
@@ -191,6 +191,14 @@ const TeacherChat = () => {
             </Button>
           </Link>
           <h1 className="text-3xl font-bold text-blue-800">Chat with Teachers</h1>
+          <div className="ml-auto">
+            <Link to="/media-upload">
+              <Button className="bg-green-600 hover:bg-green-700 text-white">
+                <Upload className="mr-2 h-4 w-4" />
+                Upload Media
+              </Button>
+            </Link>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">

@@ -6,25 +6,31 @@ import { Card, CardContent } from "@/components/ui/card";
 const DevadarMedia = () => {
   // Featured video
   const featuredVideo = {
-    id: "Uj8LClVk6_w",
-    title: "Featured Video",
+    id: "local",
+    title: "Educational Content",
     description: "Latest content from Devadar Media",
-    thumbnail: `https://img.youtube.com/vi/Uj8LClVk6_w/maxresdefault.jpg`
+    src: "/videos/VID-20250907-WA0000.mp4",
+    type: "video/mp4"
   };
 
-  // Sample videos (in a real app, you'd fetch these from YouTube API)
+  // Sample videos
   const videos = [
     {
-      id: "Uj8LClVk6_w",
-      title: "Featured Video",
+      id: "local-1",
+      title: "Educational Content",
       description: "Latest educational content from Devadar Media channel",
-      thumbnail: `https://img.youtube.com/vi/Uj8LClVk6_w/hqdefault.jpg`
+      src: "/videos/VID-20250907-WA0000.mp4",
+      type: "video/mp4"
     },
-    // Add more videos here when you integrate with YouTube API
   ];
 
-  const openYouTubeVideo = (videoId: string) => {
-    window.open(`https://www.youtube.com/watch?v=${videoId}`, '_blank');
+  const playVideo = (videoId: string) => {
+    if (videoId.startsWith('local')) {
+      // Handle local video playback
+      console.log('Playing local video');
+    } else {
+      window.open(`https://www.youtube.com/watch?v=${videoId}`, '_blank');
+    }
   };
 
   return (
@@ -49,12 +55,12 @@ const DevadarMedia = () => {
           <Card className="overflow-hidden shadow-lg">
             <CardContent className="p-0">
               <div className="aspect-video relative">
-                <iframe
-                  src={`https://www.youtube.com/embed/${featuredVideo.id}?si=BocuPYoFP8__7FEt`}
+                <video
+                  src={featuredVideo.src}
                   title={featuredVideo.title}
                   className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
+                  controls
+                  poster="/placeholder.svg"
                 />
               </div>
               <div className="p-6">
@@ -70,13 +76,13 @@ const DevadarMedia = () => {
           <h2 className="text-2xl font-semibold mb-6 text-gray-900">All Videos</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {videos.map((video) => (
-              <Card key={video.id} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow cursor-pointer" onClick={() => openYouTubeVideo(video.id)}>
+              <Card key={video.id} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow cursor-pointer" onClick={() => playVideo(video.id)}>
                 <CardContent className="p-0">
                   <div className="aspect-video relative group">
-                    <img 
-                      src={video.thumbnail} 
-                      alt={video.title}
+                    <video 
+                      src={video.src} 
                       className="w-full h-full object-cover"
+                      muted
                     />
                     <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center">
                       <Play className="w-12 h-12 text-white opacity-80 group-hover:opacity-100 transition-opacity" />
@@ -95,7 +101,7 @@ const DevadarMedia = () => {
         {/* YouTube Channel Link */}
         <div className="mt-12 text-center">
           <Button 
-            onClick={() => window.open('https://www.youtube.com/@devadar-media', '_blank')}
+            onClick={() => window.open('http://www.youtube.com/@devadharmedia7100', '_blank')}
             className="bg-red-600 hover:bg-red-700 text-white"
           >
             Visit Devadar Media YouTube Channel
