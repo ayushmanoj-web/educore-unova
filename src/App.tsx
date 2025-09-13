@@ -25,6 +25,7 @@ import ClubApplication from "./pages/ClubApplication";
 import ClubApplications from "./pages/ClubApplications";
 import ClubChat from "./pages/ClubChat";
 import MediaUpload from "./pages/MediaUpload";
+import TeachersSection from "./pages/TeachersSection";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,7 @@ const App = () => (
             <Route path="/club-applications/:clubId" element={<ClubApplications />} />
             <Route path="/club-chat/:clubId" element={<ClubChat />} />
             <Route path="/media-upload" element={<MediaUpload />} />
+            <Route path="/teachers-section" element={<TeachersSection />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <BottomNav />
