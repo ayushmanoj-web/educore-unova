@@ -597,36 +597,7 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
               <FileText size={20} />
               View Students Leave History
             </Button>
-            <Button 
-              onClick={() => setShowTeacherAuth(true)}
-              className="w-full flex items-center justify-center gap-2"
-              variant="outline"
-            >
-              <User size={20} />
-              Teacher Profile
-            </Button>
-            <Button 
-              onClick={() => {
-                // Check if teacher is logged in first
-                const teacherData = localStorage.getItem("teacher-logged-in");
-                if (!teacherData) {
-                  toast({
-                    title: "Access Denied",
-                    description: "Please log in with your teacher profile first.",
-                    variant: "destructive",
-                  });
-                  setShowTeacherAuth(true);
-                  return;
-                }
-                onOpenChange(false);
-                navigate("/teacher-messages");
-              }}
-              className="w-full flex items-center justify-center gap-2"
-              variant="outline"
-            >
-              <MessageCircle size={20} />
-              View Messages
-            </Button>
+            {/* Removed Teacher Profile and View Messages buttons */}
           </div>
         )}
 
