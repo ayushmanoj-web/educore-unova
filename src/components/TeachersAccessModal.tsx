@@ -619,6 +619,17 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
               <MessageCircle size={20} />
               Chat with Teachers
             </Button>
+            <Button 
+              onClick={() => {
+                onOpenChange(false);
+                navigate("/teacher-messages");
+              }}
+              className="w-full flex items-center justify-center gap-2"
+              variant="outline"
+            >
+              <FileText size={20} />
+              View Messages
+            </Button>
           </div>
         )}
 
