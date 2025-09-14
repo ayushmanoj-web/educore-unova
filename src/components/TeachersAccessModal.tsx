@@ -601,10 +601,9 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
               onClick={() => setShowTeacherAuth(true)}
               className="w-full flex items-center justify-center gap-2"
               variant="outline"
-              disabled
             >
               <User size={20} />
-              Coming Soon
+              Teacher Profile
             </Button>
             <Button 
               onClick={() => {

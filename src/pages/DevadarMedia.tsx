@@ -2,59 +2,27 @@ import { ArrowLeft, Play } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 
 const DevadarMedia = () => {
-  const [uploadedMedia, setUploadedMedia] = useState<any[]>([]);
-
-  useEffect(() => {
-    fetchUploadedMedia();
-  }, []);
-
-  const fetchUploadedMedia = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('uploaded_media')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        console.error('Error fetching uploaded media:', error);
-        return;
-      }
-      
-      setUploadedMedia(data || []);
-    } catch (error) {
-      console.error('Error fetching uploaded media:', error);
-    }
+  // Featured video
+  const featuredVideo = {
+    id: "local",
+    title: "Educational Content",
+    description: "Latest content from Devadar Media",
+    src: "/videos/VID-20250907-WA0000.mp4",
+    type: "video/mp4"
   };
 
-  // Featured video - use first uploaded media if available
-  const featuredVideo = uploadedMedia.length > 0 
-    ? {
-        id: uploadedMedia[0].id,
-        title: uploadedMedia[0].title,
-        description: uploadedMedia[0].description || "Latest content from Devadar Media",
-        src: uploadedMedia[0].file_path,
-        type: uploadedMedia[0].file_type
-      }
-    : {
-        id: "local",
-        title: "Educational Content",
-        description: "Latest content from Devadar Media",
-        src: "/videos/VID-20250907-WA0000.mp4",
-        type: "video/mp4"
-      };
-
-  // All videos including uploaded media
-  const videos = uploadedMedia.map(media => ({
-    id: media.id,
-    title: media.title,
-    description: media.description || "Educational content from Devadar Media channel",
-    src: media.file_path,
-    type: media.file_type
-  }));
+  // Sample videos
+  const videos = [
+    {
+      id: "local-1",
+      title: "Educational Content",
+      description: "Latest educational content from Devadar Media channel",
+      src: "/videos/VID-20250907-WA0000.mp4",
+      type: "video/mp4"
+    },
+  ];
 
   const playVideo = (videoId: string) => {
     if (videoId.startsWith('local')) {
@@ -111,19 +79,11 @@ const DevadarMedia = () => {
               <Card key={video.id} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow cursor-pointer" onClick={() => playVideo(video.id)}>
                 <CardContent className="p-0">
                   <div className="aspect-video relative group">
-                    {video.type.startsWith('image/') ? (
-                      <img 
-                        src={video.src} 
-                        alt={video.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <video 
-                        src={video.src} 
-                        className="w-full h-full object-cover"
-                        muted
-                      />
-                    )}
+                    <video 
+                      src={video.src} 
+                      className="w-full h-full object-cover"
+                      muted
+                    />
                     <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center">
                       <Play className="w-12 h-12 text-white opacity-80 group-hover:opacity-100 transition-opacity" />
                     </div>
