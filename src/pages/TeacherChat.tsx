@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Send, ArrowLeft, Search, Upload } from "lucide-react";
+import { Send, ArrowLeft, Search, User } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 
@@ -69,12 +69,33 @@ const TeacherChat = () => {
   };
 
   const fetchTeachers = async () => {
-    const teacherProfiles = [
-      { id: "teacher-1", name: "Asainar Pookkaitha", subject: "Mathematics", phone: "8921463769" },
-      { id: "teacher-2", name: "Ranjith Lal", subject: "Science", phone: "9447427171" },
-      { id: "teacher-3", name: "Bushara Lt", subject: "English", phone: "9037209728" },
-    ];
-    setTeachers(teacherProfiles);
+    try {
+      const { data: teachers, error } = await supabase
+        .from('teachers')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      // Transform the data to match the Teacher interface
+      const transformedTeachers: Teacher[] = teachers?.map(teacher => ({
+        id: teacher.id,
+        name: teacher.name,
+        subject: `Class ${teacher.class} - Division ${teacher.division}`,
+        phone: `Teacher ID: ${teacher.id.slice(0, 8)}`
+      })) || [];
+
+      setTeachers(transformedTeachers);
+    } catch (error) {
+      console.error('Error fetching teachers:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load teacher profiles. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const fetchMessages = async () => {
@@ -191,11 +212,142 @@ const TeacherChat = () => {
             </Button>
           </Link>
           <h1 className="text-3xl font-bold text-blue-800">Chat with Teachers</h1>
+          <div className="ml-auto">
+            <Link to="/teacher-profile-setup">
+              <Button className="bg-green-600 hover:bg-green-700 text-white">
+                <User className="mr-2 h-4 w-4" />
+                Create Teacher Profile
+              </Button>
+            </Link>
+          </div>
         </div>
 
-        <div className="flex items-center justify-center h-[400px]">
-          <p className="text-slate-500 text-lg">This section has been removed</p>
-        </div>
+        {teachers.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-[400px] text-center">
+            <User className="w-16 h-16 text-slate-300 mb-4" />
+            <h2 className="text-xl font-semibold text-slate-600 mb-2">No Teacher Profiles Found</h2>
+            <p className="text-slate-500 mb-6">Create a teacher profile to start chatting</p>
+            <Link to="/teacher-profile-setup">
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                <User className="mr-2 h-4 w-4" />
+                Create Teacher Profile
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
+            {/* Teachers List */}
+            <Card className="lg:col-span-1">
+              <CardHeader>
+                <CardTitle>Available Teachers</CardTitle>
+                <div className="relative mt-4">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+                  <Input
+                    placeholder="Search teachers..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="space-y-2">
+                  {filteredTeachers.map((teacher) => (
+                    <button
+                      key={teacher.id}
+                      onClick={() => setSelectedTeacher(teacher)}
+                      className={`w-full p-4 text-left hover:bg-slate-100 transition-colors border-l-4 ${
+                        selectedTeacher?.id === teacher.id
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-transparent"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Avatar>
+                          <AvatarFallback>
+                            {teacher.name.split(" ").map((n) => n[0]).join("")}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-semibold">{teacher.name}</p>
+                          <p className="text-sm text-slate-600">{teacher.subject}</p>
+                          <p className="text-xs text-slate-500">{teacher.phone}</p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Chat Area */}
+            <Card className="lg:col-span-2">
+              {selectedTeacher ? (
+                <>
+                  <CardHeader className="border-b">
+                    <div className="flex items-center gap-3">
+                      <Avatar>
+                        <AvatarFallback>
+                          {selectedTeacher.name.split(" ").map((n) => n[0]).join("")}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <CardTitle>{selectedTeacher.name}</CardTitle>
+                        <p className="text-sm text-slate-600">{selectedTeacher.subject}</p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="flex flex-col h-[450px] p-0">
+                    {/* Messages */}
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                      {messages.map((message) => (
+                        <div
+                          key={message.id}
+                          className={`flex ${
+                            message.sender_id === currentUserId ? "justify-end" : "justify-start"
+                          }`}
+                        >
+                          <div
+                            className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                              message.sender_id === currentUserId
+                                ? "bg-blue-600 text-white"
+                                : "bg-slate-200 text-slate-800"
+                            }`}
+                          >
+                            <p>{message.message_text}</p>
+                            <p className="text-xs mt-1 opacity-70">
+                              {new Date(message.timestamp).toLocaleTimeString()}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Message Input */}
+                    <div className="border-t p-4">
+                      <div className="flex gap-2">
+                        <Input
+                          value={newMessage}
+                          onChange={(e) => setNewMessage(e.target.value)}
+                          onKeyPress={handleKeyPress}
+                          placeholder="Type your message..."
+                          className="flex-1"
+                        />
+                        <Button onClick={sendMessage} disabled={!newMessage.trim()}>
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </>
+              ) : (
+                <CardContent className="flex items-center justify-center h-full">
+                  <p className="text-slate-500">Select a teacher to start chatting</p>
+                </CardContent>
+              )}
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );

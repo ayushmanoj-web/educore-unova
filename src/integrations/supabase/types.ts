@@ -599,6 +599,33 @@ export type Database = {
         }
         Relationships: []
       }
+      teachers: {
+        Row: {
+          class: string
+          created_at: string
+          division: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          class: string
+          created_at?: string
+          division: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          class?: string
+          created_at?: string
+          division?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       test_scores: {
         Row: {
           created_at: string
@@ -629,6 +656,36 @@ export type Database = {
           subject?: string
           test_name?: string
           total?: number
+        }
+        Relationships: []
+      }
+      uploaded_media: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_path: string
+          file_type: string
+          id: string
+          title: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_path: string
+          file_type: string
+          id?: string
+          title: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_path?: string
+          file_type?: string
+          id?: string
+          title?: string
+          uploaded_by?: string | null
         }
         Relationships: []
       }

@@ -597,7 +597,28 @@ const TeachersAccessModal = ({ open, onOpenChange }: TeachersAccessModalProps) =
               <FileText size={20} />
               View Students Leave History
             </Button>
-            {/* Removed Teacher Profile and View Messages buttons */}
+            <Button 
+              onClick={() => {
+                onOpenChange(false);
+                navigate("/teacher-profile-setup");
+              }}
+              className="w-full flex items-center justify-center gap-2"
+              variant="outline"
+            >
+              <User size={20} />
+              Teachers Profile
+            </Button>
+            <Button 
+              onClick={() => {
+                onOpenChange(false);
+                navigate("/teacher-chat");
+              }}
+              className="w-full flex items-center justify-center gap-2"
+              variant="outline"
+            >
+              <MessageCircle size={20} />
+              Chat with Teachers
+            </Button>
           </div>
         )}
 
