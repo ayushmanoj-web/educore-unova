@@ -26,6 +26,8 @@ import ClubApplications from "./pages/ClubApplications";
 import ClubChat from "./pages/ClubChat";
 import TeacherProfileSetup from "./pages/TeacherProfileSetup";
 import TeacherLiveChat from "./pages/TeacherLiveChat";
+import TeacherStudentChat from "./pages/TeacherStudentChat";
+import TeacherMessages from "./pages/TeacherMessages";
 import MediaUpload from "./pages/MediaUpload";
 
 const queryClient = new QueryClient();
@@ -50,7 +52,8 @@ const App = () => (
         <Route path="/devadar-media" element={<DevadarMedia />} />
             <Route path="/leave" element={<Leave />} />
             <Route path="/teacher-chat" element={<TeacherChat />} />
-            <Route path="/teacher-messages" element={<TeacherMessagesPage />} />
+            <Route path="/teacher-messages" element={<TeacherMessages />} />
+            <Route path="/teacher-student-chat" element={<TeacherStudentChat />} />
             <Route path="/progress" element={<Progress />} />
             <Route path="/attendance" element={<Attendance />} />
             <Route path="/extra-curriculars" element={<ExtraCurriculars />} />

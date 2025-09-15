@@ -145,7 +145,11 @@ const TeacherMessages: React.FC = () => {
                   Showing {messages.length} message{messages.length !== 1 ? 's' : ''} from students
                 </div>
                 {messages.map((message) => (
-                  <div key={message.id} className="border rounded-lg p-4 hover:bg-accent/50 transition-colors">
+                  <div 
+                    key={message.id} 
+                    className="border rounded-lg p-4 hover:bg-accent/50 transition-colors cursor-pointer"
+                    onClick={() => navigate(`/teacher-student-chat?studentName=${encodeURIComponent(message.student_name)}&studentClass=${encodeURIComponent(message.student_class)}&studentDivision=${encodeURIComponent(message.student_division)}&studentPhone=${encodeURIComponent(message.student_phone)}`)}
+                  >
                     <div className="flex items-start gap-3">
                       <Avatar className="w-10 h-10">
                         <AvatarFallback className="bg-blue-100 text-blue-800">
@@ -168,6 +172,7 @@ const TeacherMessages: React.FC = () => {
                             <a
                               href={`tel:${message.student_phone}`}
                               className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 mt-1"
+                              onClick={(e) => e.stopPropagation()}
                             >
                               <Phone className="h-3 w-3" />
                               {message.student_phone}
@@ -176,6 +181,9 @@ const TeacherMessages: React.FC = () => {
                         </div>
                         <div className="bg-accent/30 rounded-md p-3">
                           <p className="text-sm text-foreground">{message.message_text}</p>
+                        </div>
+                        <div className="mt-2 text-xs text-primary">
+                          Click to reply to this student
                         </div>
                       </div>
                     </div>
