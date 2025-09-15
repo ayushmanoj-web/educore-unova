@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { ArrowLeft, MessageCircle, Phone } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, MessageCircle, Phone, Search, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -21,6 +22,8 @@ interface TeacherMessage {
 
 const TeacherMessages: React.FC = () => {
   const [messages, setMessages] = useState<TeacherMessage[]>([]);
+  const [filteredMessages, setFilteredMessages] = useState<TeacherMessage[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [loggedInTeacher, setLoggedInTeacher] = useState<any>(null);
   const navigate = useNavigate();
@@ -55,17 +58,56 @@ const TeacherMessages: React.FC = () => {
   const fetchTeacherMessages = async (teacherPhone: string) => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('teacher_messages')
-        .select('*')
-        .eq('teacher_phone', teacherPhone)
-        .order('timestamp', { ascending: false });
+      // Fetch from both teacher_messages and messages_chat tables
+      const [teacherMessagesResult, chatMessagesResult] = await Promise.all([
+        supabase
+          .from('teacher_messages')
+          .select('*')
+          .eq('teacher_phone', teacherPhone)
+          .order('timestamp', { ascending: false }),
+        supabase
+          .from('messages_chat')
+          .select('*')
+          .eq('receiver_id', loggedInTeacher?.id)
+          .order('timestamp', { ascending: false })
+      ]);
 
-      if (error) {
-        throw error;
-      }
+      if (teacherMessagesResult.error) throw teacherMessagesResult.error;
+      if (chatMessagesResult.error) throw chatMessagesResult.error;
 
-      setMessages(data || []);
+      // Combine and format messages
+      const combinedMessages = [
+        ...(teacherMessagesResult.data || []).map(msg => ({
+          id: msg.id,
+          teacher_name: msg.teacher_name,
+          teacher_phone: msg.teacher_phone,
+          student_name: msg.student_name,
+          student_class: msg.student_class,
+          student_division: msg.student_division,
+          student_phone: msg.student_phone,
+          message_text: msg.message_text,
+          timestamp: msg.timestamp
+        })),
+        ...(chatMessagesResult.data || []).map(msg => ({
+          id: msg.id,
+          teacher_name: loggedInTeacher?.name || '',
+          teacher_phone: teacherPhone,
+          student_name: msg.sender_name || 'Unknown Student',
+          student_class: msg.sender_class || '',
+          student_division: msg.sender_division || '',
+          student_phone: msg.sender_id,
+          message_text: msg.message_text,
+          timestamp: msg.timestamp
+        }))
+      ];
+
+      // Remove duplicates and sort by timestamp
+      const uniqueMessages = combinedMessages.filter((msg, index, self) => 
+        index === self.findIndex(m => m.id === msg.id)
+      ).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+      setMessages(uniqueMessages);
+      setFilteredMessages(uniqueMessages);
     } catch (error) {
       console.error('Error fetching teacher messages:', error);
       toast({
@@ -77,6 +119,21 @@ const TeacherMessages: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  // Filter messages based on search query
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredMessages(messages);
+    } else {
+      const filtered = messages.filter(message =>
+        message.student_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        message.student_class.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        message.student_division.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        message.message_text.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredMessages(filtered);
+    }
+  }, [searchQuery, messages]);
 
   const getInitials = (name: string) => {
     return name
@@ -101,7 +158,7 @@ const TeacherMessages: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen w-full px-4 py-6 bg-gradient-to-tr from-slate-50 via-white to-blue-50">
+    <div className="min-h-screen w-full px-4 py-6 bg-background">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center gap-4 mb-6">
           <Button
@@ -112,17 +169,35 @@ const TeacherMessages: React.FC = () => {
             <ArrowLeft className="h-4 w-4" />
             Back to Home
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-primary">Messages for {loggedInTeacher.name}</h1>
-            <p className="text-muted-foreground">Class: {loggedInTeacher.class}</p>
+          <div className="flex items-center gap-3 flex-1">
+            <Avatar className="h-12 w-12">
+              <AvatarFallback className="bg-primary text-primary-foreground">
+                <User className="h-6 w-6" />
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">Messages for {loggedInTeacher.name}</h1>
+              <p className="text-muted-foreground">Class: {loggedInTeacher.class} | Division: {loggedInTeacher.division}</p>
+            </div>
           </div>
         </div>
 
-        <Card>
+        <Card className="bg-card border-border">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MessageCircle className="h-5 w-5" />
-              Student Messages
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="h-5 w-5" />
+                Student Messages
+              </div>
+              <div className="flex items-center gap-2">
+                <Search className="h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search messages..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-64"
+                />
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -131,28 +206,33 @@ const TeacherMessages: React.FC = () => {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                 <p className="text-muted-foreground">Loading messages...</p>
               </div>
-            ) : messages.length === 0 ? (
+            ) : filteredMessages.length === 0 ? (
               <div className="text-center py-8">
                 <MessageCircle className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Messages Yet</h3>
+                <h3 className="text-lg font-semibold mb-2">
+                  {searchQuery ? 'No Messages Found' : 'No Messages Yet'}
+                </h3>
                 <p className="text-muted-foreground">
-                  Students haven't sent any messages to you yet.
+                  {searchQuery 
+                    ? 'No messages match your search criteria.'
+                    : 'Students haven\'t sent any messages to you yet.'
+                  }
                 </p>
               </div>
             ) : (
               <div className="space-y-4">
                 <div className="text-sm text-muted-foreground mb-4">
-                  Showing {messages.length} message{messages.length !== 1 ? 's' : ''} from students
+                  Showing {filteredMessages.length} of {messages.length} message{messages.length !== 1 ? 's' : ''} from students
                 </div>
-                {messages.map((message) => (
+                {filteredMessages.map((message) => (
                   <div 
                     key={message.id} 
-                    className="border rounded-lg p-4 hover:bg-accent/50 transition-colors cursor-pointer"
+                    className="border border-border rounded-lg p-4 hover:bg-accent/50 transition-colors cursor-pointer"
                     onClick={() => navigate(`/teacher-student-chat?studentName=${encodeURIComponent(message.student_name)}&studentClass=${encodeURIComponent(message.student_class)}&studentDivision=${encodeURIComponent(message.student_division)}&studentPhone=${encodeURIComponent(message.student_phone)}`)}
                   >
                     <div className="flex items-start gap-3">
                       <Avatar className="w-10 h-10">
-                        <AvatarFallback className="bg-blue-100 text-blue-800">
+                        <AvatarFallback className="bg-primary/10 text-primary">
                           {getInitials(message.student_name)}
                         </AvatarFallback>
                       </Avatar>
@@ -179,11 +259,11 @@ const TeacherMessages: React.FC = () => {
                             </a>
                           </div>
                         </div>
-                        <div className="bg-accent/30 rounded-md p-3">
+                        <div className="bg-muted/50 rounded-md p-3">
                           <p className="text-sm text-foreground">{message.message_text}</p>
                         </div>
-                        <div className="mt-2 text-xs text-primary">
-                          Click to reply to this student
+                        <div className="mt-2 text-xs text-primary hover:text-primary/80">
+                          Click to start conversation with this student
                         </div>
                       </div>
                     </div>
