@@ -36,7 +36,6 @@ const TeacherLiveChat = () => {
   const [teacher, setTeacher] = useState<Teacher | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  const [currentUserId] = useState("student-123"); // This would come from auth context
   const [studentProfile, setStudentProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -44,10 +43,16 @@ const TeacherLiveChat = () => {
     if (teacherId) {
       fetchTeacher();
       fetchStudentProfile();
-      fetchMessages();
-      subscribeToMessages();
     }
   }, [teacherId]);
+
+  useEffect(() => {
+    if (teacherId && studentProfile) {
+      fetchMessages();
+      const cleanup = subscribeToMessages();
+      return cleanup;
+    }
+  }, [teacherId, studentProfile]);
 
   const fetchTeacher = async () => {
     if (!teacherId) return;
@@ -100,13 +105,13 @@ const TeacherLiveChat = () => {
   };
 
   const fetchMessages = async () => {
-    if (!teacherId) return;
+    if (!teacherId || !studentProfile) return;
 
     try {
       const { data, error } = await supabase
         .from("messages_chat")
         .select("*")
-        .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${teacherId}),and(sender_id.eq.${teacherId},receiver_id.eq.${currentUserId})`)
+        .or(`and(sender_id.eq.${studentProfile.id},receiver_id.eq.${teacherId}),and(sender_id.eq.${teacherId},receiver_id.eq.${studentProfile.id})`)
         .order("timestamp", { ascending: true });
 
       if (error) {
@@ -125,10 +130,10 @@ const TeacherLiveChat = () => {
   };
 
   const subscribeToMessages = () => {
-    if (!teacherId) return;
+    if (!teacherId || !studentProfile) return;
 
     const channel = supabase
-      .channel("teacher-live-chat-changes")
+      .channel(`teacher-live-chat-${teacherId}-${studentProfile.id}`)
       .on(
         "postgres_changes",
         {
@@ -139,8 +144,8 @@ const TeacherLiveChat = () => {
         (payload) => {
           const newMessage = payload.new as Message;
           if (
-            (newMessage.sender_id === currentUserId && newMessage.receiver_id === teacherId) ||
-            (newMessage.sender_id === teacherId && newMessage.receiver_id === currentUserId)
+            (newMessage.sender_id === studentProfile.id && newMessage.receiver_id === teacherId) ||
+            (newMessage.sender_id === teacherId && newMessage.receiver_id === studentProfile.id)
           ) {
             setMessages((prev) => [...prev, newMessage]);
           }
@@ -159,7 +164,7 @@ const TeacherLiveChat = () => {
     try {
       // Insert into messages_chat for regular chat functionality
       const { error: chatError } = await supabase.from("messages_chat").insert({
-        sender_id: currentUserId,
+        sender_id: studentProfile.id,
         receiver_id: teacherId,
         message_text: newMessage.trim(),
         sender_name: studentProfile.name,
@@ -285,19 +290,19 @@ const TeacherLiveChat = () => {
                   <div
                     key={message.id}
                     className={`flex ${
-                      message.sender_id === currentUserId ? "justify-end" : "justify-start"
+                      message.sender_id === studentProfile?.id ? "justify-end" : "justify-start"
                     }`}
                   >
                     <div
                       className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl shadow-sm ${
-                        message.sender_id === currentUserId
+                        message.sender_id === studentProfile?.id
                           ? "bg-blue-600 text-white rounded-br-md"
                           : "bg-white text-slate-800 border rounded-bl-md"
                       }`}
                     >
                       <p className="text-sm">{message.message_text}</p>
                       <p className={`text-xs mt-1 ${
-                        message.sender_id === currentUserId ? "text-blue-100" : "text-slate-500"
+                        message.sender_id === studentProfile?.id ? "text-blue-100" : "text-slate-500"
                       }`}>
                         {new Date(message.timestamp).toLocaleTimeString([], { 
                           hour: '2-digit', 

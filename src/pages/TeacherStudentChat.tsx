@@ -33,8 +33,6 @@ const TeacherStudentChat = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [loggedInTeacher, setLoggedInTeacher] = useState<any>(null);
-  const [currentTeacherId] = useState("teacher-123"); // This would come from auth context
-  const [currentStudentId] = useState("student-123"); // This would be derived from student info
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -53,8 +51,9 @@ const TeacherStudentChat = () => {
     try {
       const teacher = JSON.parse(teacherData);
       setLoggedInTeacher(teacher);
-      fetchMessages();
-      subscribeToMessages();
+      fetchMessages(teacher.id);
+      const cleanup = subscribeToMessages(teacher.id);
+      return cleanup;
     } catch (error) {
       toast({
         title: "Error",
@@ -65,12 +64,15 @@ const TeacherStudentChat = () => {
     }
   }, []);
 
-  const fetchMessages = async () => {
+  const fetchMessages = async (teacherId: string) => {
+    // For demo purposes, we'll create mock UUIDs based on the names
+    const studentId = 'student-' + btoa(studentName).slice(0, 8) + '-uuid';
+    
     try {
       const { data, error } = await supabase
         .from("messages_chat")
         .select("*")
-        .or(`and(sender_id.eq.${currentTeacherId},receiver_id.eq.${currentStudentId}),and(sender_id.eq.${currentStudentId},receiver_id.eq.${currentTeacherId})`)
+        .or(`and(sender_id.eq.${teacherId},receiver_id.eq.${studentId}),and(sender_id.eq.${studentId},receiver_id.eq.${teacherId})`)
         .order("timestamp", { ascending: true });
 
       if (error) {
@@ -90,9 +92,11 @@ const TeacherStudentChat = () => {
     }
   };
 
-  const subscribeToMessages = () => {
+  const subscribeToMessages = (teacherId: string) => {
+    const studentId = 'student-' + btoa(studentName).slice(0, 8) + '-uuid';
+    
     const channel = supabase
-      .channel("teacher-student-chat-changes")
+      .channel(`teacher-student-chat-${teacherId}-${studentId}`)
       .on(
         "postgres_changes",
         {
@@ -103,8 +107,8 @@ const TeacherStudentChat = () => {
         (payload) => {
           const newMessage = payload.new as Message;
           if (
-            (newMessage.sender_id === currentTeacherId && newMessage.receiver_id === currentStudentId) ||
-            (newMessage.sender_id === currentStudentId && newMessage.receiver_id === currentTeacherId)
+            (newMessage.sender_id === teacherId && newMessage.receiver_id === studentId) ||
+            (newMessage.sender_id === studentId && newMessage.receiver_id === teacherId)
           ) {
             setMessages((prev) => [...prev, newMessage]);
           }
@@ -120,11 +124,13 @@ const TeacherStudentChat = () => {
   const sendMessage = async () => {
     if (!newMessage.trim() || !loggedInTeacher) return;
 
+    const studentId = 'student-' + btoa(studentName).slice(0, 8) + '-uuid';
+
     try {
       // Insert into messages_chat for regular chat functionality
       const { error: chatError } = await supabase.from("messages_chat").insert({
-        sender_id: currentTeacherId,
-        receiver_id: currentStudentId,
+        sender_id: loggedInTeacher.id,
+        receiver_id: studentId,
         message_text: newMessage.trim(),
         sender_name: loggedInTeacher.name,
         sender_class: loggedInTeacher.class,
@@ -233,19 +239,19 @@ const TeacherStudentChat = () => {
                   <div
                     key={message.id}
                     className={`flex ${
-                      message.sender_id === currentTeacherId ? "justify-end" : "justify-start"
+                      message.sender_id === loggedInTeacher?.id ? "justify-end" : "justify-start"
                     }`}
                   >
                     <div
                       className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl shadow-sm ${
-                        message.sender_id === currentTeacherId
+                        message.sender_id === loggedInTeacher?.id
                           ? "bg-green-600 text-white rounded-br-md"
                           : "bg-white text-slate-800 border rounded-bl-md"
                       }`}
                     >
                       <p className="text-sm">{message.message_text}</p>
                       <p className={`text-xs mt-1 ${
-                        message.sender_id === currentTeacherId ? "text-green-100" : "text-slate-500"
+                        message.sender_id === loggedInTeacher?.id ? "text-green-100" : "text-slate-500"
                       }`}>
                         {new Date(message.timestamp).toLocaleTimeString([], { 
                           hour: '2-digit', 
