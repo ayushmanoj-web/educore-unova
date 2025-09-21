@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Send, MessageCircle, Users, Trash2, Video } from "lucide-react";
+import { Send, MessageCircle, Users, Trash2, Video, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -12,6 +12,9 @@ type ChatMessage = {
   id: string;
   text: string | null;
   audio_url: string | null;
+  image_url: string | null;
+  video_url: string | null;
+  message_type: 'text' | 'image' | 'audio' | 'video';
   sender_phone: string;
   timestamp: string;
 };
@@ -31,6 +34,79 @@ const LiveChat = () => {
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = async (file: File) => {
+    try {
+      const currentUser = getCurrentUser();
+      if (!currentUser) {
+        toast({
+          title: "Authentication Error",
+          description: "You must be logged in to upload files.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${currentUser.phone}-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('chat_attachments')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('chat_attachments')
+        .getPublicUrl(filePath);
+
+      let message_type: 'image' | 'audio' | 'video' = 'image';
+      if (file.type.startsWith('audio/')) {
+        message_type = 'audio';
+      } else if (file.type.startsWith('video/')) {
+        message_type = 'video';
+      }
+
+      const message = {
+        sender_phone: currentUser.phone,
+        text: null,
+        audio_url: message_type === 'audio' ? publicUrl : null,
+        image_url: message_type === 'image' ? publicUrl : null,
+        video_url: message_type === 'video' ? publicUrl : null,
+        message_type,
+      };
+
+      const { error: insertError } = await supabase.from('messages').insert(message);
+
+      if (insertError) {
+        throw insertError;
+      }
+
+      toast({
+        title: "File Uploaded",
+        description: "Your file has been sent.",
+      });
+
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast({
+        title: "Upload Error",
+        description: "Failed to upload file. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileUpload(file);
+    }
+  };
 
   // Get current user from localStorage profiles
   const getCurrentUser = () => {
@@ -164,26 +240,19 @@ const LiveChat = () => {
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'messages',
         },
         (payload) => {
-          console.log('New message received:', payload.new);
-          setMessages(prev => [...prev, payload.new as ChatMessage]);
+          if (payload.eventType === 'INSERT') {
+            console.log('New message received:', payload.new);
+            setMessages(prev => [...prev, payload.new as ChatMessage]);
+          } else if (payload.eventType === 'DELETE') {
+            console.log('Message deleted:', payload.old);
+            setMessages(prev => prev.filter(msg => msg.id !== (payload.old as any).id));
+          }
           setConnectionStatus('connected');
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'messages',
-        },
-        (payload) => {
-          console.log('Message deleted:', payload.old);
-          setMessages(prev => prev.filter(msg => msg.id !== payload.old.id));
         }
       )
       .subscribe((status) => {
@@ -201,24 +270,12 @@ const LiveChat = () => {
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'public_profiles',
         },
         (payload) => {
-          console.log('New profile added:', payload.new);
-          fetchProfiles();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'public_profiles',
-        },
-        (payload) => {
-          console.log('Profile updated:', payload.new);
+          console.log('Profile event:', payload.eventType);
           fetchProfiles();
         }
       )
@@ -445,6 +502,8 @@ const LiveChat = () => {
               phone: message.sender_phone
             };
             
+            message.message_type = message.message_type || (message.audio_url ? 'audio' : 'text');
+
             return (
               <div key={message.id} className="flex items-start gap-3">
                 <Avatar className="w-8 h-8">
@@ -466,7 +525,18 @@ const LiveChat = () => {
                     </span>
                   </div>
                   <div className="bg-gray-100 rounded-lg px-3 py-2 text-sm">
-                    {message.text || (message.audio_url && "🎵 Audio message")}
+                    {(() => {
+                      switch (message.message_type) {
+                        case 'image':
+                          return <img src={message.image_url!} alt="user upload" className="max-w-xs rounded-lg" />;
+                        case 'audio':
+                          return <audio controls src={message.audio_url!} />;
+                        case 'video':
+                          return <video controls src={message.video_url!} className="max-w-xs rounded-lg" />;
+                        default:
+                          return message.text;
+                      }
+                    })()}
                   </div>
                 </div>
               </div>
@@ -486,6 +556,22 @@ const LiveChat = () => {
             placeholder="Type your message..."
             className="flex-1"
             disabled={connectionStatus === 'error'}
+          />
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={connectionStatus === 'error'}
+          >
+            <Paperclip className="w-4 h-4" />
+          </Button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            className="hidden"
+            accept="image/*,audio/*,video/*"
           />
           <Button 
             type="submit" 
