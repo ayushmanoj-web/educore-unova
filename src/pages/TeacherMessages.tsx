@@ -169,6 +169,14 @@ const TeacherMessages: React.FC = () => {
             <ArrowLeft className="h-4 w-4" />
             Back to Home
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => navigate("/teacher-profile-setup")}
+            className="flex items-center gap-2"
+          >
+            <User className="h-4 w-4" />
+            Teacher Profile
+          </Button>
           <div className="flex items-center gap-3 flex-1">
             <Avatar className="h-12 w-12">
               <AvatarFallback className="bg-primary text-primary-foreground">
