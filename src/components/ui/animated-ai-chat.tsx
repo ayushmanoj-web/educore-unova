@@ -295,8 +295,35 @@ export function AnimatedAIChat() {
     };
 
     const handleAttachFile = () => {
-        const mockFileName = `file-${Math.floor(Math.random() * 1000)}.pdf`;
-        setAttachments(prev => [...prev, mockFileName]);
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.multiple = true;
+        input.accept = 'image/*,video/*';
+        input.onchange = (e) => {
+            const target = e.target as HTMLInputElement;
+            const files = Array.from(target.files || []);
+            const fileNames = files.map(file => file.name);
+            setAttachments(prev => [...prev, ...fileNames]);
+        };
+        input.click();
+    };
+
+    const handleVoiceInput = () => {
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+            const recognition = new SpeechRecognition();
+            
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onresult = (event: any) => {
+                const transcript = event.results[0][0].transcript;
+                setValue(transcript);
+            };
+
+            recognition.start();
+        }
     };
 
     const removeAttachment = (index: number) => {
